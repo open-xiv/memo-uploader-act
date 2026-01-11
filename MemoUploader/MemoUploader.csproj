@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')"/>
+    <PropertyGroup>
+        <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+        <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+        <ProjectGuid>{BD1DE001-BA1C-42FF-9A63-32D45E84EA04}</ProjectGuid>
+        <OutputType>Library</OutputType>
+        <AppDesignerFolder>Properties</AppDesignerFolder>
+        <RootNamespace>MemoUploader</RootNamespace>
+        <AssemblyName>MemoUploader</AssemblyName>
+        <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+        <FileAlignment>512</FileAlignment>
+        <Deterministic>true</Deterministic>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+        <DebugSymbols>true</DebugSymbols>
+        <DebugType>full</DebugType>
+        <Optimize>false</Optimize>
+        <OutputPath>bin\Debug\</OutputPath>
+        <DefineConstants>DEBUG;TRACE</DefineConstants>
+        <ErrorReport>prompt</ErrorReport>
+        <WarningLevel>4</WarningLevel>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+        <DebugType>pdbonly</DebugType>
+        <Optimize>true</Optimize>
+        <OutputPath>bin\Release\</OutputPath>
+        <DefineConstants>TRACE</DefineConstants>
+        <ErrorReport>prompt</ErrorReport>
+        <WarningLevel>4</WarningLevel>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+    <ItemGroup>
+        <Reference Include="Advanced Combat Tracker">
+            <HintPath>..\DLibs\Advanced Combat Tracker.dll</HintPath>
+        </Reference>
+        <Reference Include="FFXIV_ACT_Plugin">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\FFXIV_ACT_Plugin.dll</HintPath>
+        </Reference>
+        <Reference Include="FFXIV_ACT_Plugin.Common">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\FFXIV_ACT_Plugin.Common.dll</HintPath>
+        </Reference>
+        <Reference Include="FFXIV_ACT_Plugin.Config">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\FFXIV_ACT_Plugin.Config.dll</HintPath>
+        </Reference>
+        <Reference Include="FFXIV_ACT_Plugin.Logfile">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\FFXIV_ACT_Plugin.Logfile.dll</HintPath>
+        </Reference>
+        <Reference Include="FFXIV_ACT_Plugin.Memory">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\FFXIV_ACT_Plugin.Memory.dll</HintPath>
+        </Reference>
+        <Reference Include="FFXIV_ACT_Plugin.Network">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\FFXIV_ACT_Plugin.Network.dll</HintPath>
+        </Reference>
+        <Reference Include="FFXIV_ACT_Plugin.Parse">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\FFXIV_ACT_Plugin.Parse.dll</HintPath>
+        </Reference>
+        <Reference Include="FFXIV_ACT_Plugin.Resource">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\FFXIV_ACT_Plugin.Resource.dll</HintPath>
+        </Reference>
+        <Reference Include="Machina">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\Machina.dll</HintPath>
+        </Reference>
+        <Reference Include="Machina.FFXIV">
+            <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\Machina.FFXIV.dll</HintPath>
+        </Reference>
+        <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+            <HintPath>..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+        </Reference>
+        <Reference Include="System"/>
+        <Reference Include="System.Core"/>
+        <Reference Include="System.Drawing"/>
+        <Reference Include="System.Threading.Tasks.Dataflow, Version=10.0.0.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+            <HintPath>..\packages\System.Threading.Tasks.Dataflow.10.0.1\lib\net462\System.Threading.Tasks.Dataflow.dll</HintPath>
+        </Reference>
+        <Reference Include="System.Windows.Forms"/>
+        <Reference Include="System.Xml.Linq"/>
+        <Reference Include="System.Data.DataSetExtensions"/>
+        <Reference Include="Microsoft.CSharp"/>
+        <Reference Include="System.Data"/>
+        <Reference Include="System.Net.Http"/>
+        <Reference Include="System.Xml"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Compile Include="Api\ApiClient.cs"/>
+        <Compile Include="Api\ApiSecrets.cs"/>
+        <Compile Include="Engine\EventRecorder.cs"/>
+        <Compile Include="Engine\FightContext.cs"/>
+        <Compile Include="Engine\ListenerManager.cs"/>
+        <Compile Include="Engine\RuleEngine.cs"/>
+        <Compile Include="Events\EventManager.cs"/>
+        <Compile Include="Events\LogParser.cs"/>
+        <Compile Include="Events\PartyProvider.cs"/>
+        <Compile Include="Helpers\HpHelper.cs"/>
+        <Compile Include="Helpers\LogHelper.cs"/>
+        <Compile Include="Helpers\MapHelper.cs"/>
+        <Compile Include="Models\DutyConfig.cs"/>
+        <Compile Include="Models\EngineState.cs"/>
+        <Compile Include="Models\EventRecord.cs"/>
+        <Compile Include="Models\Payload.cs"/>
+        <Compile Include="PluginContext.cs"/>
+        <Compile Include="PluginMain.cs"/>
+        <Compile Include="Properties\AssemblyInfo.cs"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Content Include="Api\.gitignore"/>
+        <Content Include="Api\ApiSecrets.cs.example"/>
+    </ItemGroup>
+    <ItemGroup>
+        <None Include="App.config"/>
+        <None Include="packages.config"/>
+    </ItemGroup>
+    <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets"/>
+</Project>
