@@ -55,6 +55,32 @@ jobs:
                     throw "AssemblyVersion not found"
                   }
 
+            - name: Pack Release Zip
+              id: pack_zip
+              shell: pwsh
+              run: |
+                  $version = "${{ steps.version.outputs.version }}"
+                  $releaseDir = "MemoUploader/bin/Release"
+                  $zipName = "MemoUploader-v$version.zip"
+
+                  $stagingDir = "staging_temp"
+                  New-Item -ItemType Directory -Path $stagingDir -Force
+
+                  $filesToPack = @(
+                      "MemoUploader.dll",
+                      "System.Threading.Tasks.Dataflow.dll",
+                      "Newtonsoft.Json.dll"
+                  )
+
+                  foreach ($file in $filesToPack) {
+                      $srcPath = Join-Path $releaseDir $file
+                      if (Test-Path $srcPath) {
+                          Copy-Item $srcPath -Destination $stagingDir
+                      }
+                  }
+
+                  Compress-Archive -Path "$stagingDir/*" -DestinationPath $zipName
+
             - name: Create git tag
               run: |
                   git config user.name "github-actions[bot]"
@@ -66,4 +92,4 @@ jobs:
               uses: softprops/action-gh-release@v2
               with:
                   tag_name: v${{ steps.version.outputs.version }}
-                  files: MemoUploader/bin/Release/MemoUploader.dll
+                  files: MemoUploader-v*.zip

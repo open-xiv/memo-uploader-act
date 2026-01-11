@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -18,7 +19,8 @@ public class UpdateHelper
 
     private const string ManifestUrl = $"{BaseUrl}/manifest.json";
 
-    private readonly string     pluginPath;
+    private readonly string     pluginPath; // DLL 文件路径
+    private readonly string     pluginDir;  // 插件根目录
     private readonly HttpClient httpClient;
 
     public Version LocalVersion  { get; }
@@ -30,12 +32,13 @@ public class UpdateHelper
     public UpdateHelper(string? pluginPath)
     {
         this.pluginPath = pluginPath ?? throw new ArgumentNullException(nameof(pluginPath));
+        pluginDir       = Path.GetDirectoryName(this.pluginPath);
 
         LocalVersion = Assembly.GetExecutingAssembly().GetName().Version;
 
         httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("MemoUploaderACT", LocalVersion.ToString()));
-        httpClient.Timeout = TimeSpan.FromSeconds(10);
+        httpClient.Timeout = TimeSpan.FromSeconds(15);
 
         ServicePointManager.SecurityProtocol |= SecurityProtocolType.Tls12;
     }
@@ -63,7 +66,8 @@ public class UpdateHelper
                 LatestVersion = remoteVer;
 
                 var jsonUrl = manifest["downloadUrl"]?.ToString() ?? string.Empty;
-                DownloadUrl = !string.IsNullOrWhiteSpace(jsonUrl) ? jsonUrl : $"{BaseUrl}/MemoUploader.dll";
+                DownloadUrl = !string.IsNullOrWhiteSpace(jsonUrl) ? jsonUrl : $"{BaseUrl}/MemoUploader-v{remoteVer}.zip";
+
                 LogHelper.Debug($"检查更新完成: 本地版本 {LocalVersion} 最新版本 {LatestVersion}");
             }
         }
@@ -75,9 +79,10 @@ public class UpdateHelper
         if (!HasUpdate || string.IsNullOrEmpty(DownloadUrl))
             return false;
 
-        var tempFilePath = pluginPath + ".new";
-        var backupPath   = pluginPath + ".old";
-        LogHelper.Debug($"计划更新: 版本 {LatestVersion} 下载地址 {DownloadUrl} 临时文件 {tempFilePath} 备份文件 {backupPath}");
+        var zipPath     = Path.Combine(pluginDir, "update_temp.zip");
+        var extractPath = Path.Combine(pluginDir, "update_temp_extract");
+
+        LogHelper.Debug($"计划更新: 版本 {LatestVersion} 下载地址 {DownloadUrl}");
 
         try
         {
@@ -87,45 +92,92 @@ public class UpdateHelper
                     throw new HttpRequestException($"HTTP {response.StatusCode}");
 
                 using var stream     = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-                using var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None);
+                using var fileStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None);
                 await stream.CopyToAsync(fileStream, 81920, ct).ConfigureAwait(false);
             }
 
-            var downloadedVersionInfo = FileVersionInfo.GetVersionInfo(tempFilePath);
-            if (Version.TryParse(downloadedVersionInfo.FileVersion, out var downloadedVer))
+            if (Directory.Exists(extractPath))
+                Directory.Delete(extractPath, true);
+            ZipFile.ExtractToDirectory(zipPath, extractPath);
+
+            var newDllPath = Path.Combine(extractPath, Path.GetFileName(pluginPath));
+            if (File.Exists(newDllPath))
             {
-                if (downloadedVer <= LocalVersion)
+                var downloadedVersionInfo = FileVersionInfo.GetVersionInfo(newDllPath);
+                if (Version.TryParse(downloadedVersionInfo.FileVersion, out var downloadedVer))
                 {
-                    File.Delete(tempFilePath);
-                    return false;
+                    if (downloadedVer <= LocalVersion)
+                    {
+                        LogHelper.Error($"更新取消: 下载的版本 ({downloadedVer}) 不高于本地版本 ({LocalVersion})");
+                        CleanupTempFiles(zipPath, extractPath);
+                        return false;
+                    }
                 }
             }
 
-            if (File.Exists(backupPath))
-            {
-                try { File.Delete(backupPath); }
-                catch
-                {
-                    // ignored
-                }
-            }
+            ApplyUpdateRecursive(extractPath, pluginDir);
 
-            try { File.Move(pluginPath, backupPath); }
-            catch (IOException)
-            {
-                File.Delete(tempFilePath);
-                return false;
-            }
-
-            File.Move(tempFilePath, pluginPath);
+            LogHelper.Debug("更新应用成功 重启后生效");
             return true;
         }
         catch (Exception ex)
         {
             LogHelper.Error($"更新失败: {ex.Message}");
-            if (File.Exists(tempFilePath))
-                File.Delete(tempFilePath);
             return false;
+        }
+        finally { CleanupTempFiles(zipPath, extractPath); }
+    }
+
+    private void ApplyUpdateRecursive(string sourceDir, string targetDir)
+    {
+        if (!Directory.Exists(targetDir))
+            Directory.CreateDirectory(targetDir);
+
+        foreach (var file in Directory.GetFiles(sourceDir))
+        {
+            var fileName = Path.GetFileName(file);
+            var destFile = Path.Combine(targetDir, fileName);
+
+            if (File.Exists(destFile))
+            {
+                var oldFile = destFile + ".old";
+                try
+                {
+                    if (File.Exists(oldFile))
+                        File.Delete(oldFile);
+
+                    File.Move(destFile, oldFile);
+                }
+                catch
+                {
+                    LogHelper.Debug($"警告: 无法移动/替换文件 {fileName} (可能被占用)");
+                    continue;
+                }
+            }
+
+            File.Move(file, destFile);
+        }
+
+        foreach (var dir in Directory.GetDirectories(sourceDir))
+        {
+            var dirName    = Path.GetFileName(dir);
+            var destSubDir = Path.Combine(targetDir, dirName);
+            ApplyUpdateRecursive(dir, destSubDir);
+        }
+    }
+
+    private void CleanupTempFiles(string zipPath, string extractPath)
+    {
+        try
+        {
+            if (File.Exists(zipPath))
+                File.Delete(zipPath);
+            if (Directory.Exists(extractPath))
+                Directory.Delete(extractPath, true);
+        }
+        catch
+        {
+            // ignored
         }
     }
 }
