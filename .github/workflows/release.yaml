@@ -68,8 +68,7 @@ jobs:
 
                   $filesToPack = @(
                       "MemoUploader.dll",
-                      "System.Threading.Tasks.Dataflow.dll",
-                      "Newtonsoft.Json.dll"
+                      "System.Threading.Tasks.Dataflow.dll"
                   )
 
                   foreach ($file in $filesToPack) {
