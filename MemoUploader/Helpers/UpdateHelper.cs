@@ -29,10 +29,10 @@ public class UpdateHelper
 
     public bool HasUpdate => LatestVersion > LocalVersion;
 
-    public UpdateHelper(string? pluginPath)
+    public UpdateHelper(string? pluginPath, string? pluginDir)
     {
         this.pluginPath = pluginPath ?? throw new ArgumentNullException(nameof(pluginPath));
-        pluginDir       = Path.GetDirectoryName(this.pluginPath);
+        this.pluginDir  = pluginDir ?? throw new ArgumentNullException(nameof(pluginDir));
 
         LocalVersion = Assembly.GetExecutingAssembly().GetName().Version;
 
@@ -83,6 +83,7 @@ public class UpdateHelper
         var extractPath = Path.Combine(pluginDir, "update_temp_extract");
 
         LogHelper.Debug($"计划更新: 版本 {LatestVersion} 下载地址 {DownloadUrl}");
+        LogHelper.Debug($"目标下载路径: {zipPath} 解压路径: {extractPath}");
 
         try
         {
