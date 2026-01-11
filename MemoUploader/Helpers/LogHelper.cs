@@ -9,23 +9,27 @@ namespace MemoUploader.Helpers;
 
 public static class LogHelper
 {
-    public static RichTextBox LogBox { get; set; }
+    public static RichTextBox? LogBox { get; set; }
 
-    static LogHelper()
+    private static readonly string LogPath = Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory,
+        "Plugins",
+        "SumemoUploader.log"
+    );
+
+    private static readonly object FileLock = new();
+
+    public static void Init(RichTextBox logBox)
     {
-        LogBox            = new RichTextBox();
+        LogBox            = logBox;
         LogBox.Dock       = DockStyle.Fill;
         LogBox.ReadOnly   = true;
         LogBox.Font       = new Font("Consolas", 10);
         LogBox.ScrollBars = RichTextBoxScrollBars.Vertical;
     }
 
-    private static readonly string LogPath = Path.Combine(
-        AppDomain.CurrentDomain.BaseDirectory,
-        "SumemoUploader_Debug.log"
-    );
-
-    private static readonly object FileLock = new();
+    public static void Uninit()
+        => LogBox = null;
 
     public static void Debug(string message)
         => Write("DEBUG", message);
@@ -54,6 +58,9 @@ public static class LogHelper
                     sw.WriteLine(logStr);
 
             // write to ui
+            if (LogBox is null || LogBox.IsDisposed)
+                return;
+
             if (LogBox.InvokeRequired)
             {
                 LogBox.Invoke(new Action(() => Write(level, message)));
