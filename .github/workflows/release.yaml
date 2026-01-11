@@ -19,6 +19,9 @@ jobs:
                   fetch-depth: 0
                   submodules: recursive
 
+            -   name: Setup MSBuild
+                uses: microsoft/setup-msbuild@v2
+
             - name: Generate Auth File
               shell: pwsh
               env:
