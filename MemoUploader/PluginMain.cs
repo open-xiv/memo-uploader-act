@@ -20,6 +20,7 @@ public class PluginMain : IActPluginV1
         lblStatus              = pluginStatusText;
         pluginScreenSpace.Text = "酥卷 SuMemo";
         pluginScreenSpace.Controls.Add(LogHelper.LogBox);
+        ((TabControl)(pluginScreenSpace.Parent)).TabPages.Remove(pluginScreenSpace);
 
         // engine
         engine = new RuleEngine();
