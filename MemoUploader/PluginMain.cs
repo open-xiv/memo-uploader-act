@@ -26,6 +26,10 @@ public class PluginMain : IActPluginV1
         lblStatus              = pluginStatusText;
         pluginScreenSpace.Text = "酥卷 SuMemo";
         ((TabControl)pluginScreenSpace.Parent).TabPages.Remove(pluginScreenSpace);
+        AssemblyResolver asmResolver = new AssemblyResolver(new List<string>
+        {
+            ActGlobals.oFormActMain.PluginGetSelfData(this).pluginFile.DirectoryName,
+        });
 
         // engine
         engine = new RuleEngine();
