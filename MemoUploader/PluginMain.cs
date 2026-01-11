@@ -57,7 +57,7 @@ public class PluginMain : IActPluginV1
 
         // check for updates
         updateCts = new CancellationTokenSource();
-        var updateHelper = new UpdateHelper(pluginPath);
+        var updateHelper = new UpdateHelper(pluginPath, pluginDir);
         _ = Task.Run(async () =>
         {
             try
