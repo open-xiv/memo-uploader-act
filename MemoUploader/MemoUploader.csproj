@@ -98,6 +98,7 @@
         <Compile Include="Helpers\HpHelper.cs"/>
         <Compile Include="Helpers\LogHelper.cs"/>
         <Compile Include="Helpers\MapHelper.cs"/>
+        <Compile Include="Helpers\UpdateHelper.cs"/>
         <Compile Include="Models\DutyConfig.cs"/>
         <Compile Include="Models\EngineState.cs"/>
         <Compile Include="Models\EventRecord.cs"/>

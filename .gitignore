@@ -8,5 +8,8 @@ obj/
 bin/
 *.user
 
+# dist
+dist/
+
 # reliance
 packages/
