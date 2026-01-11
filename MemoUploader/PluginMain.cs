@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -26,9 +28,15 @@ public class PluginMain : IActPluginV1
         lblStatus              = pluginStatusText;
         pluginScreenSpace.Text = "酥卷 SuMemo";
         ((TabControl)pluginScreenSpace.Parent).TabPages.Remove(pluginScreenSpace);
-        AssemblyResolver asmResolver = new AssemblyResolver(new List<string>
+
+        // path
+        var pluginDir  = ActGlobals.oFormActMain.PluginGetSelfData(this).pluginFile.DirectoryName;
+        var pluginPath = ActGlobals.oFormActMain.PluginGetSelfData(this).pluginFile.Name;
+
+        // assembly resolver
+        var asmResolver = new AssemblyResolver(new List<string>
         {
-            ActGlobals.oFormActMain.PluginGetSelfData(this).pluginFile.DirectoryName,
+            pluginDir
         });
 
         // engine
@@ -41,11 +49,14 @@ public class PluginMain : IActPluginV1
         // link engine and services
         eventService.OnEvent += engine.PostEvent;
 
+        // log file
+        if (pluginDir is not null)
+            LogHelper.LogPath = Path.Combine(pluginDir, "runtime.log");
+
         lblStatus.Text = "初始化完成";
 
         // check for updates
         updateCts = new CancellationTokenSource();
-        var pluginPath   = ActGlobals.oFormActMain.ActPlugins.Find(p => string.Equals(p.pluginFile.Name, "MemoUploader.dll"))?.pluginFile.FullName;
         var updateHelper = new UpdateHelper(pluginPath);
         _ = Task.Run(async () =>
         {

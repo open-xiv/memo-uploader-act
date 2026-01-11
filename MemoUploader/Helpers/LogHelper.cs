@@ -11,7 +11,7 @@ public static class LogHelper
 {
     public static RichTextBox? LogBox { get; set; }
 
-    private static readonly string LogPath = Path.Combine(
+    public static string LogPath = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory,
         "Plugins",
         "SumemoUploader.log"
