@@ -1,0 +1,71 @@
+﻿name: Build Release
+
+on:
+    push:
+        branches:
+            - main
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        runs-on: windows-latest
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  submodules: recursive
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: 10.0.x
+
+            - name: Generate Auth File
+              shell: pwsh
+              env:
+                  SECRET_KEY: ${{ secrets.API_AUTH_KEY }}
+              run: |
+                  $filePath = "${{ github.workspace }}\MemoUploader\Api\ApiSecrets.cs"
+                  $content = @"
+                  namespace MemoUploader.Api;
+                  public class ApiSecrets
+                  {
+                      public const string AuthKey = "$env:SECRET_KEY";
+                  }
+                  "@
+                  Set-Content -Path $filePath -Value $content
+
+            - name: Restore
+              run: dotnet restore
+
+            - name: Build (Release)
+              run: dotnet build -c Release
+
+            - name: Read Version
+              id: version
+              shell: pwsh
+              run: |
+                  $content = Get-Content MemoUploader/Properties/AssemblyInfo.cs -Raw
+                  if ($content -match 'AssemblyVersion\("([^"]+)"\)') {
+                  $version = $matches[1]
+                  "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+                  } else {
+                    throw "AssemblyVersion not found"
+                  }
+
+            - name: Create git tag
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+                  git tag v${{ steps.version.outputs.version }}
+                  git push origin v${{ steps.version.outputs.version }}
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: v${{ steps.version.outputs.version }}
+                  files: MemoUploader/bin/Release/MemoUploader.dll
