@@ -5,7 +5,7 @@ using MemoUploader.Models;
 
 namespace MemoUploader.Engine;
 
-public class EventRecorder(int maxEventHistory)
+internal class EventRecorder(int maxEventHistory)
 {
     // event log queue
     private readonly ConcurrentQueue<EventLog> eventHistory = [];

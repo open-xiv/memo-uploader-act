@@ -14,14 +14,14 @@ namespace MemoUploader;
 
 public class PluginMain : IActPluginV1
 {
-    private Label lblStatus;
+    private Label? lblStatus;
 
     // service
-    private RuleEngine   engine;
-    private EventManager eventService;
+    private RuleEngine?   engine;
+    private EventManager? eventService;
 
     // update cts
-    private CancellationTokenSource updateCts;
+    private CancellationTokenSource? updateCts;
 
     public void InitPlugin(TabPage pluginScreenSpace, Label pluginStatusText)
     {
@@ -34,7 +34,7 @@ public class PluginMain : IActPluginV1
         var pluginPath = ActGlobals.oFormActMain.PluginGetSelfData(this).pluginFile.Name;
 
         // assembly resolver
-        var asmResolver = new AssemblyResolver(new List<string>
+        _ = new AssemblyResolver(new List<string>
         {
             pluginDir
         });
@@ -52,6 +52,9 @@ public class PluginMain : IActPluginV1
         // log file
         if (pluginDir is not null)
             LogHelper.LogPath = Path.Combine(pluginDir, "runtime.log");
+
+        // parser
+        ParseHelper.Init();
 
         lblStatus.Text = "初始化完成";
 
@@ -76,15 +79,16 @@ public class PluginMain : IActPluginV1
     public void DeInitPlugin()
     {
         // unlink engine and services
-        eventService.OnEvent -= engine.PostEvent;
+        if (engine is not null && eventService is not null)
+            eventService.OnEvent -= engine.PostEvent;
 
         // service
-        eventService.Uninit();
+        eventService?.Uninit();
 
         // cancel update
         updateCts?.Cancel();
         updateCts?.Dispose();
 
-        lblStatus.Text = "插件已卸载";
+        lblStatus?.Text = "插件已卸载";
     }
 }

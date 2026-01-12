@@ -1,23 +1,19 @@
 using System.Collections.Generic;
-using MemoUploader.Events;
 using MemoUploader.Models;
 
 
 namespace MemoUploader;
 
-public static class PluginContext
+internal static class PluginContext
 {
-    // party provider
-    public static ActPartyProvider PartyProvider { get; set; } = new();
-
     // recorder
-    public static IReadOnlyList<EventLog> EventHistory { get; set; } = [];
+    internal static IReadOnlyList<EventLog> EventHistory { get; set; } = [];
 
     // fight context
-    public static EngineState?                         Lifecycle       { get; set; }
-    public static string                               CurrentPhase    { get; set; } = string.Empty;
-    public static string                               CurrentSubphase { get; set; } = string.Empty;
-    public static uint                                 EnemyDataId     { get; set; }
-    public static IReadOnlyList<(string, bool)>        Checkpoints     { get; set; } = [];
-    public static IReadOnlyDictionary<string, object?> VariableStats   { get; set; } = new Dictionary<string, object?>();
+    internal static EngineState?                         Lifecycle       { get; set; }
+    internal static string                               CurrentPhase    { get; set; } = string.Empty;
+    internal static string                               CurrentSubphase { get; set; } = string.Empty;
+    internal static uint                                 EnemyDataId     { get; set; }
+    internal static IReadOnlyList<(string, bool)>        Checkpoints     { get; set; } = [];
+    internal static IReadOnlyDictionary<string, object?> VariableStats   { get; set; } = new Dictionary<string, object?>();
 }

@@ -10,7 +10,7 @@ using Newtonsoft.Json;
 
 namespace MemoUploader.Api;
 
-public static class ApiClient
+internal static class ApiClient
 {
     private static readonly HttpClient Client;
 
@@ -34,11 +34,6 @@ public static class ApiClient
         Client.Timeout = TimeSpan.FromSeconds(5);
     }
 
-    /// <summary>
-    ///     fetch duty configuration from the API.
-    /// </summary>
-    /// <param name="zoneId">zone id of territory</param>
-    /// <returns>duty config if successful, otherwise null</returns>
     public static async Task<DutyConfig?> FetchDutyConfigAsync(uint zoneId)
     {
         var url = $"{AssetsUrl}/duty/{zoneId}";
@@ -46,7 +41,11 @@ public static class ApiClient
         {
             var resp = await Client.GetAsync(url);
             if (!resp.IsSuccessStatusCode)
+            {
+                if (resp.StatusCode != HttpStatusCode.NotFound)
+                    LogHelper.Warning($"Fetch duty config failed: {resp.StatusCode}");
                 return null;
+            }
 
             var content = await resp.Content.ReadAsStringAsync();
             var duty    = JsonConvert.DeserializeObject<DutyConfig>(content);
@@ -55,11 +54,6 @@ public static class ApiClient
         catch (Exception) { return null; }
     }
 
-    /// <summary>
-    ///     upload fight record to the API.
-    /// </summary>
-    /// <param name="payload">fight record payload</param>
-    /// <returns>true if successful, otherwise false</returns>
     public static async Task<bool> UploadFightRecordAsync(FightRecordPayload payload)
     {
         const string url = $"{ApiUrl}/fight";
@@ -70,10 +64,10 @@ public static class ApiClient
             var resp = await Client.PostAsync(url, content);
             if (resp.StatusCode == HttpStatusCode.Created)
             {
-                LogHelper.Debug("fight record uploaded successfully");
+                LogHelper.Info("Fight record uploaded successfully");
                 return true;
             }
-            LogHelper.Warning($"fight record upload failed: {resp.StatusCode}");
+            LogHelper.Warning($"Fight record upload failed: {resp.StatusCode}");
             LogHelper.Warning(resp.Content.ReadAsStringAsync().Result);
             return false;
         }

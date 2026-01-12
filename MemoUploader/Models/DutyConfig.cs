@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace MemoUploader.Models;
 
-public class DutyConfig
+internal class DutyConfig
 {
     [JsonProperty("zone_id")]
     public uint ZoneId { get; set; }
@@ -31,7 +31,7 @@ public class DutyConfig
     public Timeline Timeline { get; set; } = null!;
 }
 
-public class LogsEncounter
+internal class LogsEncounter
 {
     [JsonProperty("zone")]
     public uint Zone { get; set; }
@@ -43,7 +43,7 @@ public class LogsEncounter
     public uint Difficulty { get; set; }
 }
 
-public class Variable
+internal class Variable
 {
     [JsonProperty("name")]
     public string Name { get; set; } = string.Empty;
@@ -52,7 +52,7 @@ public class Variable
     public object? Initial { get; set; }
 }
 
-public class Mechanic
+internal class Mechanic
 {
     [JsonProperty("name")]
     public string Name { get; set; } = string.Empty;
@@ -67,7 +67,7 @@ public class Mechanic
     public List<Action> Actions { get; set; } = [];
 }
 
-public class Timeline
+internal class Timeline
 {
     [JsonProperty("start_phase")]
     public string StartPhase { get; set; } = string.Empty;
@@ -76,7 +76,7 @@ public class Timeline
     public List<Phase> Phases { get; set; } = [];
 }
 
-public class Phase
+internal class Phase
 {
     [JsonProperty("name")]
     public string Name { get; set; } = string.Empty;
@@ -91,7 +91,7 @@ public class Phase
     public List<Transition> Transitions { get; set; } = [];
 }
 
-public class Transition
+internal class Transition
 {
     [JsonProperty("target_phase")]
     public string TargetPhase { get; set; } = string.Empty;
@@ -100,7 +100,7 @@ public class Transition
     public List<Condition> Conditions { get; set; } = [];
 }
 
-public class Action
+internal class Action
 {
     [JsonProperty("type")]
     public string Type { get; set; } = string.Empty;
@@ -112,7 +112,7 @@ public class Action
     public object? Value { get; set; }
 }
 
-public class Trigger
+internal class Trigger
 {
     [JsonProperty("type")]
     public string Type { get; set; } = string.Empty;
@@ -145,7 +145,7 @@ public class Trigger
     public List<Trigger> Conditions { get; set; } = [];
 }
 
-public class Condition
+internal class Condition
 {
     [JsonProperty("type")]
     public string Type { get; set; } = string.Empty;

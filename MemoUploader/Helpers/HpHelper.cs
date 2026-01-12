@@ -7,7 +7,7 @@ using Advanced_Combat_Tracker;
 
 namespace MemoUploader.Helpers;
 
-public static class HpHelper
+internal static class HpHelper
 {
     public static double TryGetEnemyHp(EncounterData encounter)
     {
@@ -132,7 +132,7 @@ public static class HpHelper
                 return true;
             case string s:
             {
-                var t = (s ?? "").Trim();
+                var t = s.Trim();
                 if (string.IsNullOrEmpty(t))
                     return false;
                 t = t.Replace(",", "");
