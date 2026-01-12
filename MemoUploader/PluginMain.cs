@@ -89,6 +89,7 @@ public class PluginMain : IActPluginV1
         updateCts?.Cancel();
         updateCts?.Dispose();
 
-        lblStatus?.Text = "插件已卸载";
+        if (lblStatus is not null)
+            lblStatus.Text = "插件已卸载";
     }
 }
