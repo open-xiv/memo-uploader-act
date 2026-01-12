@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using Advanced_Combat_Tracker;
 using MemoUploader.Helpers;
 using MemoUploader.Models;
@@ -25,12 +24,26 @@ namespace MemoUploader.Events;
 ///     22: NameToggle - 切换可选中
 ///     104: InCombat - 进战状态
 /// </summary>
-public class EventManager
+internal class EventManager
 {
     public event Action<IEvent>? OnEvent;
 
-    private void RaiseEvent(IEvent e) =>
+    private void RaiseEvent(IEvent e)
+    {
+        switch (e)
+        {
+            case DutyWiped:
+                LogHelper.Info("[Event] DutyWiped detected");
+                break;
+            case DutyCompleted:
+                LogHelper.Info("[Event] DutyCompleted detected");
+                break;
+            case DutyEnd:
+                LogHelper.Info("[Event] DutyEnd detected");
+                break;
+        }
         OnEvent?.Invoke(e);
+    }
 
     #region Hook
 
@@ -85,7 +98,7 @@ public class EventManager
     ///     解析 ACT 日志行
     ///     格式: [timestamp] TypeName HexCode:field1:field2:...
     /// </summary>
-    public void ParseLogLine(string logLine)
+    private void ParseLogLine(string logLine)
     {
         if (string.IsNullOrEmpty(logLine))
             return;
@@ -136,11 +149,6 @@ public class EventManager
                 // 移除战斗对象
                 case "04":
                     ParseRemoveCombatant(parts);
-                    break;
-
-                // 小队成员变更
-                case "0B":
-                    ParsePartyChange(parts);
                     break;
 
                 // 开始咏唱
@@ -231,35 +239,7 @@ public class EventManager
         if (currentZoneId == oldZoneId || currentZoneId <= 0)
             return;
 
-        PluginContext.PartyProvider.PlayerCache    = [];
-        PluginContext.PartyProvider.PartyPlayerIds = [];
         RaiseEvent(new TerritoryChanged(currentZoneId));
-    }
-
-    /// <summary>
-    ///     解析小队成员变更
-    ///     ACT格式: 0B:[partyCount]:[id0]:[id1]:[id2]:[id3]:[id4]:...
-    /// </summary>
-    /// <param name="parts"></param>
-    private void ParsePartyChange(string[] parts)
-    {
-        if (parts.Length < 3)
-            return;
-
-        var partyCount = LogParser.TryParseHex(parts[1]);
-        var partyIds   = new HashSet<uint>();
-        for (var i = 0; i < partyCount; i++)
-        {
-            var index = 2 + i;
-            if (index >= parts.Length)
-                break;
-
-            var memberId = LogParser.TryParseHex(parts[index]);
-            if (memberId != 0)
-                partyIds.Add(memberId);
-        }
-
-        PluginContext.PartyProvider.PartyPlayerIds = partyIds;
     }
 
     #endregion
@@ -274,21 +254,6 @@ public class EventManager
     {
         if (parts.Length < 12)
             return;
-
-        var worldId = LogParser.TryParseHex(parts[6]);
-        if (worldId != 0 && PluginContext.PartyProvider.PlayerCache.Count < 100)
-        {
-            var entityId = LogParser.TryParseHex(parts[1]);
-            var player = new PlayerSnapshot
-            {
-                EntityId = entityId,
-                Name     = parts[2],
-                Server   = MapHelper.ServerEnToZh(parts[7]),
-                JobId    = LogParser.TryParseHex(parts[3]),
-                Level    = LogParser.TryParseHex(parts[4])
-            };
-            PluginContext.PartyProvider.PlayerCache[entityId] = player;
-        }
 
         RaiseEvent(new CombatantSpawned(LogParser.TryParseHex(parts[1])));
     }

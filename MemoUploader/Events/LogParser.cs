@@ -3,7 +3,7 @@ using System.Globalization;
 
 namespace MemoUploader.Events;
 
-public static class LogParser
+internal static class LogParser
 {
     public static uint TryParseHex(string value)
     {

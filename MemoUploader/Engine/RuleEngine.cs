@@ -1,13 +1,13 @@
-﻿#nullable enable
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using MemoUploader.Api;
+using MemoUploader.Helpers;
 using MemoUploader.Models;
 
 
 namespace MemoUploader.Engine;
 
-public class RuleEngine
+internal class RuleEngine
 {
     // event queue
     private readonly ActionBlock<IEvent> eventQueue;
@@ -35,7 +35,12 @@ public class RuleEngine
         if (e is TerritoryChanged tc)
         {
             var dutyConfig = await ApiClient.FetchDutyConfigAsync(tc.ZoneId);
-            fightContext = dutyConfig is not null ? new FightContext(dutyConfig) : null;
+            if (dutyConfig is not null)
+            {
+                if (fightContext is not null)
+                    LogHelper.Info($"Force ending previous fight context: {fightContext.DutyConfig.ZoneId} -> {dutyConfig.ZoneId}");
+                fightContext = new FightContext(dutyConfig);
+            }
         }
 
         fightContext?.ProcessEvent(e);

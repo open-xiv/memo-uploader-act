@@ -13,19 +13,19 @@ using Newtonsoft.Json.Linq;
 
 namespace MemoUploader.Helpers;
 
-public class UpdateHelper
+internal class UpdateHelper
 {
     private const string BaseUrl = "https://haku.diemoe.net/memo-uploader";
 
     private const string ManifestUrl = $"{BaseUrl}/manifest.json";
 
-    private readonly string     pluginPath; // DLL 文件路径
-    private readonly string     pluginDir;  // 插件根目录
+    private readonly string     pluginPath;
+    private readonly string     pluginDir;
     private readonly HttpClient httpClient;
 
-    public Version LocalVersion  { get; }
-    public Version LatestVersion { get; private set; }
-    public string  DownloadUrl   { get; private set; }
+    private Version? LocalVersion  { get; }
+    private Version? LatestVersion { get; set; }
+    private string?  DownloadUrl   { get; set; }
 
     public bool HasUpdate => LatestVersion > LocalVersion;
 
@@ -49,16 +49,22 @@ public class UpdateHelper
         {
             using var response = await httpClient.GetAsync(ManifestUrl, ct).ConfigureAwait(false);
             if (!response.IsSuccessStatusCode)
+            {
+                LogHelper.Warning($"Check update failed: HTTP {response.StatusCode}");
                 return;
+            }
 
             var json     = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
             var manifest = JObject.Parse(json);
 
             var versionStr = manifest["version"]?.ToString();
             if (string.IsNullOrWhiteSpace(versionStr))
+            {
+                LogHelper.Warning("Check update failed: version field missing in manifest");
                 return;
+            }
 
-            if (versionStr.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+            if (versionStr!.StartsWith("v", StringComparison.OrdinalIgnoreCase))
                 versionStr = versionStr.Substring(1);
 
             if (Version.TryParse(versionStr, out var remoteVer))
@@ -68,10 +74,10 @@ public class UpdateHelper
                 var jsonUrl = manifest["downloadUrl"]?.ToString() ?? string.Empty;
                 DownloadUrl = !string.IsNullOrWhiteSpace(jsonUrl) ? jsonUrl : $"{BaseUrl}/MemoUploader-v{remoteVer}.zip";
 
-                LogHelper.Debug($"检查更新完成: 本地版本 {LocalVersion} 最新版本 {LatestVersion}");
+                LogHelper.Debug($"Check update success: [local {LocalVersion}] [latest {LatestVersion}]");
             }
         }
-        catch (Exception ex) { LogHelper.Error($"更新检查失败: {ex.Message}"); }
+        catch (Exception ex) { LogHelper.Error($"Check update failed: {ex.Message}"); }
     }
 
     public async Task<bool> PerformUpdateAsync(CancellationToken ct = default)
@@ -82,15 +88,18 @@ public class UpdateHelper
         var zipPath     = Path.Combine(pluginDir, "update_temp.zip");
         var extractPath = Path.Combine(pluginDir, "update_temp_extract");
 
-        LogHelper.Debug($"计划更新: 版本 {LatestVersion} 下载地址 {DownloadUrl}");
-        LogHelper.Debug($"目标下载路径: {zipPath} 解压路径: {extractPath}");
+        LogHelper.Debug($"Update planned: [version {LatestVersion}] [url {DownloadUrl}]");
+        LogHelper.Debug($"Target path: [zip {zipPath}] [extract {extractPath}]");
 
         try
         {
             using (var response = await httpClient.GetAsync(DownloadUrl, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
             {
                 if (!response.IsSuccessStatusCode)
+                {
+                    LogHelper.Error($"Download update failed: HTTP {response.StatusCode}");
                     throw new HttpRequestException($"HTTP {response.StatusCode}");
+                }
 
                 using var stream     = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
                 using var fileStream = new FileStream(zipPath, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -109,7 +118,7 @@ public class UpdateHelper
                 {
                     if (downloadedVer <= LocalVersion)
                     {
-                        LogHelper.Error($"更新取消: 下载的版本 ({downloadedVer}) 不高于本地版本 ({LocalVersion})");
+                        LogHelper.Info($"Update cancelled: downloaded version ({downloadedVer}) <= ({LocalVersion})");
                         CleanupTempFiles(zipPath, extractPath);
                         return false;
                     }
@@ -118,18 +127,18 @@ public class UpdateHelper
 
             ApplyUpdateRecursive(extractPath, pluginDir);
 
-            LogHelper.Debug("更新应用成功 重启后生效");
+            LogHelper.Info($"Update success: updated to version {LatestVersion}");
             return true;
         }
         catch (Exception ex)
         {
-            LogHelper.Error($"更新失败: {ex.Message}");
+            LogHelper.Error($"Update failed: {ex.Message}");
             return false;
         }
         finally { CleanupTempFiles(zipPath, extractPath); }
     }
 
-    private void ApplyUpdateRecursive(string sourceDir, string targetDir)
+    private static void ApplyUpdateRecursive(string sourceDir, string targetDir)
     {
         if (!Directory.Exists(targetDir))
             Directory.CreateDirectory(targetDir);
@@ -151,7 +160,7 @@ public class UpdateHelper
                 }
                 catch
                 {
-                    LogHelper.Debug($"警告: 无法移动/替换文件 {fileName} (可能被占用)");
+                    LogHelper.Warning($"Apply updates to file failed: {fileName}");
                     continue;
                 }
             }
@@ -167,7 +176,7 @@ public class UpdateHelper
         }
     }
 
-    private void CleanupTempFiles(string zipPath, string extractPath)
+    private static void CleanupTempFiles(string zipPath, string extractPath)
     {
         try
         {

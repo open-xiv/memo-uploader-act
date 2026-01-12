@@ -109,10 +109,10 @@
         <Compile Include="Engine\RuleEngine.cs"/>
         <Compile Include="Events\EventManager.cs"/>
         <Compile Include="Events\LogParser.cs"/>
-        <Compile Include="Events\PartyProvider.cs"/>
         <Compile Include="Helpers\HpHelper.cs"/>
         <Compile Include="Helpers\LogHelper.cs"/>
         <Compile Include="Helpers\MapHelper.cs"/>
+        <Compile Include="Helpers\ParseHelper.cs"/>
         <Compile Include="Helpers\UpdateHelper.cs"/>
         <Compile Include="Helpers\AssemblyResolver.cs"/>
         <Compile Include="Models\DutyConfig.cs"/>

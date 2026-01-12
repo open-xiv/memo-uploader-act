@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Advanced_Combat_Tracker;
+using FFXIV_ACT_Plugin.Common.Models;
 using MemoUploader.Api;
 using MemoUploader.Helpers;
 using MemoUploader.Models;
@@ -11,10 +13,10 @@ using Action = MemoUploader.Models.Action;
 
 namespace MemoUploader.Engine;
 
-public class FightContext
+internal class FightContext
 {
     // duty config
-    private readonly DutyConfig dutyConfig;
+    public readonly DutyConfig DutyConfig;
 
     #region Payload
 
@@ -42,7 +44,7 @@ public class FightContext
 
     private void UpdateContext()
     {
-        var phase = dutyConfig.Timeline.Phases[Math.Max(phaseIndex, 0)];
+        var phase = DutyConfig.Timeline.Phases[Math.Max(phaseIndex, 0)];
         PluginContext.CurrentPhase = phase.Name;
         PluginContext.CurrentSubphase = subphaseIndex >= 0 && subphaseIndex < phase.CheckpointNames.Count
                                             ? phase.CheckpointNames[subphaseIndex]
@@ -58,7 +60,7 @@ public class FightContext
     public FightContext(DutyConfig dutyConfig)
     {
         // props
-        this.dutyConfig = dutyConfig;
+        DutyConfig = dutyConfig;
 
         // reset state
         ResetState();
@@ -130,9 +132,15 @@ public class FightContext
         var durationNs = (endTime - startTime).Ticks * 100;
         durationNs = Math.Max(durationNs, 1);
 
-        // clear
+        // enemy hp
         var enemyHp = HpHelper.TryGetEnemyHp(encounter);
-        var clear   = isClear ?? enemyHp <= 1e-3;
+        var repo    = ParseHelper.Parser?.DataRepository;
+        var enemy   = repo?.GetCombatantList().First(c => c.BNpcID == PluginContext.EnemyDataId);
+        if (enemy is not null)
+            enemyHp = enemy.CurrentHP / (double)enemy.MaxHP;
+
+        // clear
+        var clear = isClear ?? enemyHp <= 1e-3;
 
         // progress
         var progress = new FightProgressPayload
@@ -148,14 +156,54 @@ public class FightContext
         {
             StartTime = startTime,
             Duration  = durationNs,
-            ZoneId    = dutyConfig.ZoneId,
-            Players   = PluginContext.PartyProvider.GetPartyPayload(encounter),
+            ZoneId    = DutyConfig.ZoneId,
+            Players   = GetPartyPayload(encounter),
             IsClear   = clear,
             Progress  = progress
         };
 
         // upload
         _ = Task.Run(async () => await ApiClient.UploadFightRecordAsync(payload));
+    }
+
+    private static List<PlayerPayload> GetPartyPayload(EncounterData encounter)
+    {
+        var repo = ParseHelper.Parser?.DataRepository;
+        if (repo is null)
+        {
+            LogHelper.Warning("Fetch party payload failed: parser repository is null");
+            return [];
+        }
+
+        var players         = new List<PlayerPayload>();
+        var partyMembers    = repo.GetCombatantList().Where(c => c.PartyType == PartyType.Party).ToList();
+        var hasAssumedLocal = false;
+        foreach (var member in partyMembers)
+        {
+            // death count
+            var combatant = encounter.Items.Values.FirstOrDefault(x => x.Name == member.Name);
+            switch (combatant)
+            {
+                case null when !hasAssumedLocal:
+                    combatant       = encounter.Items.Values.FirstOrDefault(x => x.Name == "YOU");
+                    hasAssumedLocal = true;
+                    break;
+                case null:
+                    LogHelper.Warning($"Fetch party payload: combatant data not found for {member.Name}");
+                    continue;
+            }
+
+            // basic info
+            players.Add(new PlayerPayload
+            {
+                Name       = member.Name,
+                Server     = MapHelper.ServerEnToZh(member.WorldName),
+                JobId      = (uint)Math.Max(0, member.Job),
+                Level      = (uint)Math.Max(0, member.Level),
+                DeathCount = (uint)Math.Max(0, combatant?.Deaths ?? 0)
+            });
+        }
+        return players;
     }
 
     #endregion
@@ -178,7 +226,7 @@ public class FightContext
 
         // variables
         variables = [];
-        foreach (var vars in dutyConfig.Variables)
+        foreach (var vars in DutyConfig.Variables)
             variables[vars.Name] = vars.Initial;
 
         // enter start phase
@@ -191,7 +239,7 @@ public class FightContext
     private void EnterPhase(int phaseId)
     {
         // phase transition
-        var phase = dutyConfig.Timeline.Phases[phaseId];
+        var phase = DutyConfig.Timeline.Phases[phaseId];
         phaseIndex    = phaseId;
         subphaseIndex = -1;
 
@@ -216,7 +264,7 @@ public class FightContext
         }
 
         // register listeners
-        foreach (var mechanic in dutyConfig.Mechanics.Where(m => mechanics.Contains(m.Name)))
+        foreach (var mechanic in DutyConfig.Mechanics.Where(m => mechanics.Contains(m.Name)))
             listenerManager.Register(new ListenerState(mechanic, mechanic.Trigger));
 
         // enemy
@@ -231,7 +279,7 @@ public class FightContext
         completedCheckpoints.Add(mechanic.Name);
 
         // update progress
-        var phase            = dutyConfig.Timeline.Phases[phaseIndex];
+        var phase            = DutyConfig.Timeline.Phases[phaseIndex];
         var newSubphaseIndex = phase.CheckpointNames.IndexOf(mechanic.Name);
         if (newSubphaseIndex >= subphaseIndex)
             subphaseIndex = newSubphaseIndex;
@@ -270,14 +318,14 @@ public class FightContext
 
     private void CheckTransition(Mechanic mechanic)
     {
-        var phase = dutyConfig.Timeline.Phases[phaseIndex];
+        var phase = DutyConfig.Timeline.Phases[phaseIndex];
         foreach (var transition in phase.Transitions)
         {
             if (transition.Conditions
                           .Where(x => x.Type == "MECHANIC_TRIGGERED")
                           .Any(x => x.MechanicName == mechanic.Name))
             {
-                EnterPhase(dutyConfig.Timeline.Phases.FindIndex(x => x.Name == transition.TargetPhase));
+                EnterPhase(DutyConfig.Timeline.Phases.FindIndex(x => x.Name == transition.TargetPhase));
                 return;
             }
         }
@@ -285,14 +333,14 @@ public class FightContext
 
     private void CheckTransition(string variable)
     {
-        var phase = dutyConfig.Timeline.Phases[phaseIndex];
+        var phase = DutyConfig.Timeline.Phases[phaseIndex];
         foreach (var transition in phase.Transitions)
         {
             if (transition.Conditions
                           .Where(x => x.Type == "EXPRESSION")
                           .Any(x => x.Expression.Contains(variable) && CheckExpression(x.Expression)))
             {
-                EnterPhase(dutyConfig.Timeline.Phases.FindIndex(x => x.Name == transition.TargetPhase));
+                EnterPhase(DutyConfig.Timeline.Phases.FindIndex(x => x.Name == transition.TargetPhase));
                 return;
             }
         }

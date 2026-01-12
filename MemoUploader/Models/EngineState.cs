@@ -1,6 +1,6 @@
 namespace MemoUploader.Models;
 
-public enum EngineState
+internal enum EngineState
 {
     Ready,
     InProgress,

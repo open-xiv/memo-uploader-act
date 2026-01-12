@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace MemoUploader.Models;
 
-public class FightRecordPayload
+internal class FightRecordPayload
 {
     [JsonProperty("start_time")]
     public DateTime StartTime { get; set; }
@@ -26,7 +26,7 @@ public class FightRecordPayload
     public FightProgressPayload Progress { get; set; } = null!;
 }
 
-public class PlayerPayload
+internal class PlayerPayload
 {
     [JsonProperty("name")]
     public string Name { get; set; } = string.Empty;
@@ -44,7 +44,7 @@ public class PlayerPayload
     public uint DeathCount { get; set; }
 }
 
-public class FightProgressPayload
+internal class FightProgressPayload
 {
     [JsonProperty("phase")]
     public uint PhaseId { get; set; }

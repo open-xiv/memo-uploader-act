@@ -3,7 +3,7 @@ using System;
 
 namespace MemoUploader.Helpers;
 
-internal class MapHelper
+internal static class MapHelper
 {
     public static string ServerEnToZh(string serverEn)
         => serverEn.ToLower() switch

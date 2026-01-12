@@ -4,13 +4,13 @@ using MemoUploader.Models;
 
 namespace MemoUploader.Engine;
 
-public class ListenerState(Mechanic mechanic, Trigger trigger)
+internal class ListenerState(Mechanic mechanic, Trigger trigger)
 {
     public Mechanic Mechanic { get; } = mechanic;
     public Trigger  Trigger  { get; } = trigger;
 }
 
-public class ListenerManager
+internal class ListenerManager
 {
     private Dictionary<string, Dictionary<uint, List<ListenerState>>> listeners = [];
 

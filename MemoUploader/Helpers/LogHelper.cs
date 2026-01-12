@@ -7,9 +7,9 @@ using System.Windows.Forms;
 
 namespace MemoUploader.Helpers;
 
-public static class LogHelper
+internal static class LogHelper
 {
-    public static RichTextBox? LogBox { get; set; }
+    private static RichTextBox? LogBox { get; set; }
 
     public static string LogPath = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory,
@@ -18,6 +18,12 @@ public static class LogHelper
     );
 
     private static readonly object FileLock = new();
+
+    // Maximum size (in bytes) before rotating the log file. Default: 5 MB.
+    private static long MaxFileSizeBytes { get; } = 5 * 1024 * 1024;
+
+    // How many rotated backups to keep. Oldest will be deleted when exceeded.
+    private static int MaxBackupFiles { get; } = 5;
 
     public static void Init(RichTextBox logBox)
     {
@@ -54,8 +60,67 @@ public static class LogHelper
         {
             // write to file
             lock (FileLock)
-                using (var sw = new StreamWriter(LogPath, true, Encoding.UTF8))
-                    sw.WriteLine(logStr);
+            {
+                try
+                {
+                    if (File.Exists(LogPath))
+                    {
+                        try
+                        {
+                            var fi = new FileInfo(LogPath);
+                            if (fi.Length > MaxFileSizeBytes)
+                            {
+                                var dir        = Path.GetDirectoryName(LogPath) ?? AppDomain.CurrentDomain.BaseDirectory;
+                                var nameNoExt  = Path.GetFileNameWithoutExtension(LogPath);
+                                var ext        = Path.GetExtension(LogPath);
+                                var timestamp  = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                                var backupName = Path.Combine(dir, $"{nameNoExt}_{timestamp}{ext}");
+
+                                File.Move(LogPath, backupName);
+
+                                using (var sw = new StreamWriter(LogPath, false, Encoding.UTF8))
+                                {
+                                    sw.WriteLine($"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Log rotated. Previous log: {Path.GetFileName(backupName)}");
+                                }
+
+                                try
+                                {
+                                    var pattern = $"{nameNoExt}_*{ext}";
+                                    var backups = Directory.GetFiles(dir, pattern);
+                                    if (backups.Length > MaxBackupFiles)
+                                    {
+                                        Array.Sort(backups, StringComparer.Ordinal);
+                                        var toDeleteCount = backups.Length - MaxBackupFiles;
+                                        for (int i = 0; i < toDeleteCount; i++)
+                                        {
+                                            try { File.Delete(backups[i]); }
+                                            catch
+                                            {
+                                                /* ignored */
+                                            }
+                                        }
+                                    }
+                                }
+                                catch
+                                {
+                                    // ignore
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // ignore
+                        }
+                    }
+
+                    using (var sw = new StreamWriter(LogPath, true, Encoding.UTF8))
+                        sw.WriteLine(logStr);
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
 
             // write to ui
             if (LogBox is null || LogBox.IsDisposed)
