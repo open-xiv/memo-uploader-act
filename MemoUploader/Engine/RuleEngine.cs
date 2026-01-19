@@ -1,7 +1,6 @@
 ﻿using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using MemoUploader.Api;
-using MemoUploader.Helpers;
 using MemoUploader.Models;
 
 
@@ -35,12 +34,7 @@ internal class RuleEngine
         if (e is TerritoryChanged tc)
         {
             var dutyConfig = await ApiClient.FetchDuty(tc.ZoneId);
-            if (dutyConfig is not null)
-            {
-                if (fightContext is not null)
-                    LogHelper.Info($"Force ending previous fight context: {fightContext.DutyConfig.ZoneId} -> {dutyConfig.ZoneId}");
-                fightContext = new FightContext(dutyConfig);
-            }
+            fightContext = dutyConfig is not null ? new FightContext(dutyConfig) : null;
         }
 
         fightContext?.ProcessEvent(e);
