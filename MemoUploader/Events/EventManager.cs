@@ -1,6 +1,5 @@
 using System;
 using Advanced_Combat_Tracker;
-using MemoUploader.Helpers;
 using MemoUploader.Models;
 
 
@@ -29,21 +28,7 @@ internal class EventManager
     public event Action<IEvent>? OnEvent;
 
     private void RaiseEvent(IEvent e)
-    {
-        switch (e)
-        {
-            case DutyWiped:
-                LogHelper.Info("[Event] DutyWiped detected");
-                break;
-            case DutyCompleted:
-                LogHelper.Info("[Event] DutyCompleted detected");
-                break;
-            case DutyEnd:
-                LogHelper.Info("[Event] DutyEnd detected");
-                break;
-        }
-        OnEvent?.Invoke(e);
-    }
+        => OnEvent?.Invoke(e);
 
     #region Hook
 

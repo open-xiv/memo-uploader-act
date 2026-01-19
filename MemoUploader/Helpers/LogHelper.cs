@@ -54,7 +54,7 @@ internal static class LogHelper
 
     private static void Write(string level, string message)
     {
-        var logStr = $"[{DateTime.Now:HH:mm:ss.fff}] [{level}] {message}";
+        var logStr = $"[{DateTime.Now:MM-dd HH:mm:ss}] [{level}] {message}";
 
         try
         {

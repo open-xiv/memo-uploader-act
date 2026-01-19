@@ -94,24 +94,26 @@ internal class FightContext
             case DutyStarted:
                 if (PluginContext.Lifecycle is EngineState.Completed or EngineState.Ready)
                 {
+                    LogHelper.Info($"Duty [{DutyConfig.ZoneId}] started: initializing fight context");
                     ResetState();
                     PluginContext.Lifecycle = EngineState.InProgress;
-                    StartSnap();
                 }
                 break;
 
             case DutyWiped:
+                LogHelper.Info($"Duty [{DutyConfig.ZoneId}] wiped: marking as not clear");
                 isClear = false;
                 break;
 
             case DutyCompleted:
+                LogHelper.Info($"Duty [{DutyConfig.ZoneId}] completed: marking as clear");
                 isClear = true;
                 break;
 
-            case DutyEnd:
+            case DutyEnd end:
+                LogHelper.Info($"Duty [{DutyConfig.ZoneId}] ended: uploading fight record");
                 PluginContext.Lifecycle = EngineState.Completed;
-                if (e is DutyEnd end)
-                    CompletedSnap(end);
+                CompletedSnap(end);
                 break;
         }
     }
@@ -119,8 +121,6 @@ internal class FightContext
     #endregion
 
     #region Snapshot
-
-    private void StartSnap() { }
 
     private void CompletedSnap(DutyEnd e)
     {
@@ -163,7 +163,7 @@ internal class FightContext
         };
 
         // upload
-        _ = Task.Run(async () => await ApiClient.UploadFightRecordAsync(payload));
+        _ = Task.Run(async () => await ApiClient.UploadFight(payload));
     }
 
     private static List<PlayerPayload> GetPartyPayload(EncounterData encounter)

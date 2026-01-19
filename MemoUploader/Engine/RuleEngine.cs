@@ -34,7 +34,7 @@ internal class RuleEngine
 
         if (e is TerritoryChanged tc)
         {
-            var dutyConfig = await ApiClient.FetchDutyConfigAsync(tc.ZoneId);
+            var dutyConfig = await ApiClient.FetchDuty(tc.ZoneId);
             if (dutyConfig is not null)
             {
                 if (fightContext is not null)
