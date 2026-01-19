@@ -64,12 +64,6 @@ internal class EventManager
 
     #endregion
 
-    #region Cache
-
-    private ushort currentZoneId;
-
-    #endregion
-
     #region Parsing
 
     private void OnBeforeLogLineRead(bool isImport, LogLineEventArgs logInfo)
@@ -219,12 +213,11 @@ internal class EventManager
         if (parts.Length < 2)
             return;
 
-        var oldZoneId = currentZoneId;
-        currentZoneId = (ushort)LogParser.TryParseHex(parts[1]);
-        if (currentZoneId == oldZoneId || currentZoneId <= 0)
+        var zoneId = (ushort)LogParser.TryParseHex(parts[1]);
+        if (zoneId <= 0)
             return;
 
-        RaiseEvent(new TerritoryChanged(currentZoneId));
+        RaiseEvent(new TerritoryChanged(zoneId));
     }
 
     #endregion
