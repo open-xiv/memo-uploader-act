@@ -79,6 +79,7 @@
             <HintPath>..\FFXIV_ACT_Plugin_CN\SDK\Latest\Machina.FFXIV.dll</HintPath>
             <Private>false</Private>
         </Reference>
+
         <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
             <HintPath>..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
             <Private>false</Private>
@@ -88,9 +89,8 @@
         <Reference Include="System.Drawing"/>
         <Reference Include="System.IO.Compression"/>
         <Reference Include="System.IO.Compression.FileSystem"/>
-        <Reference Include="System.Threading.Tasks.Dataflow, Version=10.0.0.1, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-            <HintPath>..\packages\System.Threading.Tasks.Dataflow.10.0.1\lib\net462\System.Threading.Tasks.Dataflow.dll</HintPath>
-            <Private>true</Private>
+        <Reference Include="System.Threading.Tasks.Dataflow, Version=10.0.0.2, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+            <HintPath>..\packages\System.Threading.Tasks.Dataflow.10.0.2\lib\net462\System.Threading.Tasks.Dataflow.dll</HintPath>
         </Reference>
         <Reference Include="System.Windows.Forms"/>
         <Reference Include="System.Xml.Linq"/>
@@ -103,25 +103,64 @@
     <ItemGroup>
         <Compile Include="Api\ApiClient.cs"/>
         <Compile Include="Api\ApiSecrets.cs"/>
-        <Compile Include="Engine\EventRecorder.cs"/>
-        <Compile Include="Engine\FightContext.cs"/>
-        <Compile Include="Engine\ListenerManager.cs"/>
-        <Compile Include="Engine\RuleEngine.cs"/>
         <Compile Include="Events\EventManager.cs"/>
         <Compile Include="Events\LogParser.cs"/>
-        <Compile Include="Helpers\HpHelper.cs"/>
         <Compile Include="Helpers\LogHelper.cs"/>
         <Compile Include="Helpers\MapHelper.cs"/>
         <Compile Include="Helpers\ParseHelper.cs"/>
         <Compile Include="Helpers\UpdateHelper.cs"/>
         <Compile Include="Helpers\AssemblyResolver.cs"/>
-        <Compile Include="Models\DutyConfig.cs"/>
-        <Compile Include="Models\EngineState.cs"/>
-        <Compile Include="Models\EventRecord.cs"/>
-        <Compile Include="Models\Payload.cs"/>
-        <Compile Include="PluginContext.cs"/>
         <Compile Include="PluginMain.cs"/>
         <Compile Include="Properties\AssemblyInfo.cs"/>
+        <!-- MemoEngine Source Files -->
+        <Compile Include="..\MemoEngine\MemoEngine\Context.cs">
+            <Link>MemoEngine\Context.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Event.cs">
+            <Link>MemoEngine\Event.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Api\ApiClient.cs">
+            <Link>MemoEngine\Api\ApiClient.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\EventRecorder.cs">
+            <Link>MemoEngine\Engine\EventRecorder.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\FightContext.cs">
+            <Link>MemoEngine\Engine\FightContext.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\ListenerManager.cs">
+            <Link>MemoEngine\Engine\ListenerManager.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\RuleEngine.cs">
+            <Link>MemoEngine\Engine\RuleEngine.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\DutyConfig.cs">
+            <Link>MemoEngine\Models\DutyConfig.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\EngineState.cs">
+            <Link>MemoEngine\Models\EngineState.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Payload.cs">
+            <Link>MemoEngine\Models\Payload.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Events\Action.cs">
+            <Link>MemoEngine\Models\Events\Action.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Events\Base.cs">
+            <Link>MemoEngine\Models\Events\Base.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Events\Combatant.cs">
+            <Link>MemoEngine\Models\Events\Combatant.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Events\General.cs">
+            <Link>MemoEngine\Models\Events\General.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Events\Status.cs">
+            <Link>MemoEngine\Models\Events\Status.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Events\Tools.cs">
+            <Link>MemoEngine\Models\Events\Tools.cs</Link>
+        </Compile>
     </ItemGroup>
     <ItemGroup>
         <Content Include="Api\.gitignore"/>

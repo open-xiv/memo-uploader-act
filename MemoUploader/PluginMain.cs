@@ -5,7 +5,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Advanced_Combat_Tracker;
-using MemoUploader.Engine;
+using MemoEngine;
+using MemoEngine.Models;
+using MemoUploader.Api;
 using MemoUploader.Events;
 using MemoUploader.Helpers;
 
@@ -17,7 +19,6 @@ public class PluginMain : IActPluginV1
     private Label? lblStatus;
 
     // service
-    private RuleEngine?   engine;
     private EventManager? eventService;
 
     // update cts
@@ -39,15 +40,12 @@ public class PluginMain : IActPluginV1
             pluginDir
         });
 
-        // engine
-        engine = new RuleEngine();
-
         // service
         eventService = new EventManager();
         eventService.Init();
 
-        // link engine and services
-        eventService.OnEvent += engine.PostEvent;
+        // link engine
+        Context.OnFightFinalized += OnFightFinalized;
 
         // log file
         if (pluginDir is not null)
@@ -79,8 +77,7 @@ public class PluginMain : IActPluginV1
     public void DeInitPlugin()
     {
         // unlink engine and services
-        if (engine is not null && eventService is not null)
-            eventService.OnEvent -= engine.PostEvent;
+        Context.OnFightFinalized -= OnFightFinalized;
 
         // service
         eventService?.Uninit();
@@ -89,7 +86,8 @@ public class PluginMain : IActPluginV1
         updateCts?.Cancel();
         updateCts?.Dispose();
 
-        if (lblStatus is not null)
-            lblStatus.Text = "插件已卸载";
+        lblStatus?.Text = "插件已卸载";
     }
+
+    private static void OnFightFinalized(FightRecordPayload payload) => _ = Task.Run(async () => await ApiClient.UploadFight(payload));
 }

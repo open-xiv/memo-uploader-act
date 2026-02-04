@@ -1,6 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Timers;
 using Advanced_Combat_Tracker;
-using MemoUploader.Models;
+using FFXIV_ACT_Plugin.Common.Models;
+using MemoEngine;
+using MemoUploader.Helpers;
+using PlayerPayload = MemoEngine.Models.PlayerPayload;
 
 
 namespace MemoUploader.Events;
@@ -25,48 +31,36 @@ namespace MemoUploader.Events;
 /// </summary>
 internal class EventManager
 {
-    public event Action<IEvent>? OnEvent;
+    private readonly Timer updateHpTimer;
 
-    private void RaiseEvent(IEvent e)
-        => OnEvent?.Invoke(e);
+    public EventManager()
+    {
+        updateHpTimer                     =  new Timer(200);
+        updateHpTimer.Elapsed             += (_, _) => UpdateHp();
+        updateHpTimer.AutoReset           =  true;
+        updateHpTimer.SynchronizingObject =  ActGlobals.oFormActMain;
+    }
 
     #region Hook
 
     public void Init()
     {
         ActGlobals.oFormActMain.BeforeLogLineRead += OnBeforeLogLineRead;
-        ActGlobals.oFormActMain.OnCombatStart     += OnCombatStart;
-        ActGlobals.oFormActMain.OnCombatEnd       += OnCombatEnd;
+        updateHpTimer.Start();
     }
 
     public void Uninit()
     {
         ActGlobals.oFormActMain.BeforeLogLineRead -= OnBeforeLogLineRead;
-        ActGlobals.oFormActMain.OnCombatStart     -= OnCombatStart;
-        ActGlobals.oFormActMain.OnCombatEnd       -= OnCombatEnd;
-    }
-
-    private void OnCombatStart(bool isImport, CombatToggleEventArgs encounterInfo)
-    {
-        if (isImport)
-            return;
-
-        RaiseEvent(new DutyStarted());
-    }
-
-    private void OnCombatEnd(bool isImport, CombatToggleEventArgs encounterInfo)
-    {
-        if (isImport)
-            return;
-
-        RaiseEvent(new DutyEnd(encounterInfo.encounter));
+        updateHpTimer.Stop();
+        updateHpTimer.Dispose();
     }
 
     #endregion
 
     #region Parsing
 
-    private void OnBeforeLogLineRead(bool isImport, LogLineEventArgs logInfo)
+    private static void OnBeforeLogLineRead(bool isImport, LogLineEventArgs logInfo)
     {
         if (isImport)
             return;
@@ -77,7 +71,7 @@ internal class EventManager
     ///     解析 ACT 日志行
     ///     格式: [timestamp] TypeName HexCode:field1:field2:...
     /// </summary>
-    private void ParseLogLine(string logLine)
+    private static void ParseLogLine(string logLine)
     {
         if (string.IsNullOrEmpty(logLine))
             return;
@@ -186,7 +180,7 @@ internal class EventManager
     ///     解析聊天/系统消息 - 检测副本通关/团灭
     ///     ACT格式: 00:code:name:message
     /// </summary>
-    private void ParseChatLog(string[] parts)
+    private static void ParseChatLog(string[] parts)
     {
         if (parts.Length < 4)
             return;
@@ -199,16 +193,16 @@ internal class EventManager
             message.Contains("任务完成") ||
             message.Contains("副本完成") ||
             message.Contains("攻略完了"))
-            RaiseEvent(new DutyCompleted());
+            Event.General.RaiseDutyCompleted(DateTimeOffset.UtcNow);
         // 检测团灭
         else if (message.Contains("has ended") ||
                  message.Contains("The party has been defeated") ||
                  message.Contains("全灭") ||
                  message.Contains("团灭"))
-            RaiseEvent(new DutyWiped());
+            Event.General.RaiseDutyWiped(DateTimeOffset.UtcNow);
     }
 
-    private void ParseZoneChange(string[] parts)
+    private static void ParseZoneChange(string[] parts)
     {
         if (parts.Length < 2)
             return;
@@ -217,7 +211,7 @@ internal class EventManager
         if (zoneId <= 0)
             return;
 
-        RaiseEvent(new TerritoryChanged(zoneId));
+        Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId);
     }
 
     #endregion
@@ -228,24 +222,24 @@ internal class EventManager
     ///     解析添加战斗对象
     ///     ACT格式: 03:id:name:job:level:ownerId:worldId:world:npcNameId:npcBaseId:currentHp:hp:...
     /// </summary>
-    private void ParseAddCombatant(string[] parts)
+    private static void ParseAddCombatant(string[] parts)
     {
         if (parts.Length < 12)
             return;
 
-        RaiseEvent(new CombatantSpawned(LogParser.TryParseHex(parts[1])));
+        Event.Combatant.RaiseSpawned(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
     }
 
     /// <summary>
     ///     解析移除战斗对象
     ///     ACT格式: 04:id:name:job:level:...
     /// </summary>
-    private void ParseRemoveCombatant(string[] parts)
+    private static void ParseRemoveCombatant(string[] parts)
     {
         if (parts.Length < 3)
             return;
 
-        RaiseEvent(new CombatantDestroyed(LogParser.TryParseHex(parts[1])));
+        Event.Combatant.RaiseDestroyed(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
     }
 
     /// <summary>
@@ -253,16 +247,16 @@ internal class EventManager
     ///     ACT格式: 22:id:name:targetId:targetName:toggle
     ///     toggle: 01=可选中, 00=不可选中
     /// </summary>
-    private void ParseTargetableUpdate(string[] parts)
+    private static void ParseTargetableUpdate(string[] parts)
     {
         if (parts.Length < 6)
             return;
 
         var targetable = parts[5] == "01";
         if (targetable)
-            RaiseEvent(new CombatantBecameTargetable(LogParser.TryParseHex(parts[1])));
+            Event.Combatant.RaiseBecameTargetable(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
         else
-            RaiseEvent(new CombatantBecameUntargetable(LogParser.TryParseHex(parts[1])));
+            Event.Combatant.RaiseBecameUntargetable(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
     }
 
     #endregion
@@ -273,31 +267,31 @@ internal class EventManager
     ///     解析开始咏唱
     ///     ACT格式: 14:sourceId:sourceName:actionId:actionName:targetId:targetName:castTime:...
     /// </summary>
-    private void ParseStartCasting(string[] parts)
+    private static void ParseStartCasting(string[] parts)
     {
         if (parts.Length < 7)
             return;
 
-        RaiseEvent(new ActionStarted(LogParser.TryParseHex(parts[1]), LogParser.TryParseHex(parts[3])));
+        Event.Action.RaiseStarted(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]), LogParser.TryParseHex(parts[3]));
     }
 
     /// <summary>
     ///     解析技能效果（单体）
     ///     ACT格式: 15:sourceId:sourceName:actionId:actionName:targetId:targetName:flags:damage:...
     /// </summary>
-    private void ParseActionEffect(string[] parts)
+    private static void ParseActionEffect(string[] parts)
     {
         if (parts.Length < 7)
             return;
 
-        RaiseEvent(new ActionCompleted(LogParser.TryParseHex(parts[1]), LogParser.TryParseHex(parts[3])));
+        Event.Action.RaiseCompleted(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]), LogParser.TryParseHex(parts[3]));
     }
 
     /// <summary>
     ///     解析技能效果（AOE）
     ///     ACT格式: 16:sourceId:sourceName:actionId:actionName:targetId:targetName:flags:damage:...
     /// </summary>
-    private void ParseAOEActionEffect(string[] parts) // 格式与 15 相同
+    private static void ParseAOEActionEffect(string[] parts) // 格式与 15 相同
         => ParseActionEffect(parts);
 
     #endregion
@@ -308,12 +302,25 @@ internal class EventManager
     ///     解析死亡
     ///     ACT格式: 19:targetId:targetName:sourceId:sourceName
     /// </summary>
-    private void ParseDeath(string[] parts)
+    private static void ParseDeath(string[] parts)
     {
         if (parts.Length < 5)
             return;
 
-        RaiseEvent(new PlayerDied(LogParser.TryParseHex(parts[1])));
+        Event.General.RaisePlayerDied(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
+    }
+
+    private static void UpdateHp()
+    {
+        if (Context.EnemyDataId == 0)
+            return;
+
+        var repo  = ParseHelper.Parser?.DataRepository;
+        var enemy = repo?.GetCombatantList().FirstOrDefault(c => c.BNpcID == Context.EnemyDataId);
+        if (enemy is null)
+            return;
+
+        Event.Combatant.RaiseHpUpdated(DateTimeOffset.UtcNow, enemy.BNpcID, enemy.CurrentHP, enemy.MaxHP);
     }
 
     #endregion
@@ -324,24 +331,24 @@ internal class EventManager
     ///     解析获得状态
     ///     ACT格式: 1A:statusId:statusName:duration:sourceId:sourceName:targetId:targetName:stacks:targetMaxHp:sourceMaxHp
     /// </summary>
-    private void ParseStatusAdd(string[] parts)
+    private static void ParseStatusAdd(string[] parts)
     {
         if (parts.Length < 9)
             return;
 
-        RaiseEvent(new StatusApplied(LogParser.TryParseHex(parts[6]), LogParser.TryParseHex(parts[1])));
+        Event.Status.RaiseApplied(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[6]), LogParser.TryParseHex(parts[1]));
     }
 
     /// <summary>
     ///     解析失去状态
     ///     ACT格式: 1E:statusId:statusName:?:sourceId:sourceName:targetId:targetName:stacks
     /// </summary>
-    private void ParseStatusRemove(string[] parts)
+    private static void ParseStatusRemove(string[] parts)
     {
         if (parts.Length < 9)
             return;
 
-        RaiseEvent(new StatusRemoved(LogParser.TryParseHex(parts[6]), LogParser.TryParseHex(parts[1])));
+        Event.Status.RaiseRemoved(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[6]), LogParser.TryParseHex(parts[1]));
     }
 
     #endregion
@@ -360,7 +367,7 @@ internal class EventManager
     ///     4000000F = 团灭日志2
     ///     40000011 = 团灭日志3 (战斗数据已清除)
     /// </summary>
-    private void ParseDirector(string[] parts)
+    private static void ParseDirector(string[] parts)
     {
         if (parts.Length < 3)
             return;
@@ -372,12 +379,12 @@ internal class EventManager
             // 副本胜利
             case "40000003":
             case "40000002": // 多变迷宫
-                RaiseEvent(new DutyCompleted());
+                Event.General.RaiseDutyCompleted(DateTimeOffset.UtcNow);
                 break;
 
             // 团灭 - 使用最早的团灭黑屏信号
             case "40000005":
-                RaiseEvent(new DutyWiped());
+                Event.General.RaiseDutyWiped(DateTimeOffset.UtcNow);
                 break;
         }
     }
@@ -392,7 +399,7 @@ internal class EventManager
     ///     进战: inGameCombat=1 且 isGameChanged=1
     ///     脱战: inGameCombat=0 且 isGameChanged=1
     /// </summary>
-    private void ParseInCombat(string[] parts)
+    private static void ParseInCombat(string[] parts)
     {
         if (parts.Length < 5)
             return;
@@ -400,19 +407,41 @@ internal class EventManager
         var inGameCombat  = parts[2];
         var isGameChanged = parts[4];
 
-        // 只处理游戏状态变化
         if (isGameChanged != "1")
             return;
 
         switch (inGameCombat)
         {
             case "1":
-                RaiseEvent(new CombatOptIn());
+                var partySnapshots = GetPartySnapshots();
+                Event.General.RaiseCombatOptIn(DateTimeOffset.UtcNow, partySnapshots);
+                LogHelper.Info("[Lifecycle]: Enter Combat");
+                foreach (var kv in partySnapshots)
+                    LogHelper.Info($"[Party List]: {kv.Value.Name}@{kv.Value.Server} (id: {kv.Key}) <job: {kv.Value.JobId}>");
                 break;
             case "0":
-                RaiseEvent(new CombatOptOut());
+                Event.General.RaiseCombatOptOut(DateTimeOffset.UtcNow);
                 break;
         }
+    }
+
+    private static Dictionary<uint, PlayerPayload> GetPartySnapshots()
+    {
+        var repo = ParseHelper.Parser?.DataRepository;
+        if (repo is null)
+            return [];
+
+        return repo.GetCombatantList()
+                   .Where(c => c.PartyType == PartyType.Party)
+                   .ToDictionary(p => p.ID,
+                                 p => new PlayerPayload
+                                 {
+                                     Name       = p.Name,
+                                     Server     = MapHelper.ServerEnToZh(p.WorldName),
+                                     JobId      = (uint)Math.Max(0, p.Job),
+                                     Level      = (uint)Math.Max(0, p.Level),
+                                     DeathCount = 0
+                                 });
     }
 
     #endregion

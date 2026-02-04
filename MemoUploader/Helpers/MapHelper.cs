@@ -1,6 +1,3 @@
-using System;
-
-
 namespace MemoUploader.Helpers;
 
 internal static class MapHelper
@@ -41,13 +38,5 @@ internal static class MapHelper
             "yixiujiade" or "yixiujiade2" => "伊修加德",
             "hongchachuan" or "hongchachuan2" => "红茶川",
             _ => serverEn
-        };
-
-    public static DateTime TimeToUtc(DateTime dt)
-        => dt.Kind switch
-        {
-            DateTimeKind.Utc => dt,
-            DateTimeKind.Local => dt.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(dt, DateTimeKind.Local).ToUniversalTime()
         };
 }
