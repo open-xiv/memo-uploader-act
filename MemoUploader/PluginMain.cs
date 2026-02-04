@@ -86,7 +86,8 @@ public class PluginMain : IActPluginV1
         updateCts?.Cancel();
         updateCts?.Dispose();
 
-        lblStatus?.Text = "插件已卸载";
+        if (lblStatus != null)
+            lblStatus.Text = "插件已卸载";
     }
 
     private static void OnFightFinalized(FightRecordPayload payload) => _ = Task.Run(async () => await ApiClient.UploadFight(payload));
