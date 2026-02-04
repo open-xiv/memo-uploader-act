@@ -4,3 +4,6 @@
 [submodule "ACT.DieMoe.DLibs"]
 	path = DLibs
 	url = https://github.com/NewMoe-Technology/ACT.DieMoe.DLibs
+[submodule "MemoEngine"]
+	path = MemoEngine
+	url = https://github.com/open-xiv/memo-engine.git

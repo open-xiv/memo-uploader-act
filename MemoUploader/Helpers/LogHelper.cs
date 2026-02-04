@@ -91,7 +91,7 @@ internal static class LogHelper
                                     {
                                         Array.Sort(backups, StringComparer.Ordinal);
                                         var toDeleteCount = backups.Length - MaxBackupFiles;
-                                        for (int i = 0; i < toDeleteCount; i++)
+                                        for (var i = 0; i < toDeleteCount; i++)
                                         {
                                             try { File.Delete(backups[i]); }
                                             catch
