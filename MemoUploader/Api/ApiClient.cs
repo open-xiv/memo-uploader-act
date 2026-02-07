@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,6 +38,8 @@ internal static class ApiClient
 
         Client = new HttpClient(handler);
         Client.DefaultRequestHeaders.Add("X-Auth-Key", AuthKey);
+        Client.DefaultRequestHeaders.Add("X-Client-Name", Assembly.GetEntryAssembly()?.GetName().Name == "ACT.DieMoe.Launcher" ? "ACT.DieMoe" : "ACT.Unknown");
+        Client.DefaultRequestHeaders.Add("X-Client-Version", Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "0.0.0.0");
         Client.Timeout = TimeSpan.FromSeconds(5);
     }
 

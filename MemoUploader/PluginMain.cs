@@ -86,6 +86,7 @@ public class PluginMain : IActPluginV1
         updateCts?.Cancel();
         updateCts?.Dispose();
 
+        // ReSharper disable once UseNullPropagation
         if (lblStatus != null)
             lblStatus.Text = "插件已卸载";
     }
