@@ -35,6 +35,13 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     </PropertyGroup>
     <ItemGroup>
+        <!-- Enables building on systems without the .NET Framework 4.8 targeting pack
+             (e.g. macOS / Linux dev). PrivateAssets="all" keeps it out of any consumer's
+             build graph; condition skips it on Windows where the SDK targeting pack is
+             usually already installed. Harmless to leave unconditional too. -->
+        <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net48" Version="1.0.3" PrivateAssets="all"/>
+    </ItemGroup>
+    <ItemGroup>
         <Reference Include="Advanced Combat Tracker">
             <HintPath>..\DLibs\Advanced Combat Tracker.dll</HintPath>
             <Private>false</Private>
@@ -125,14 +132,14 @@
         <Compile Include="..\MemoEngine\MemoEngine\Engine\EventRecorder.cs">
             <Link>MemoEngine\Engine\EventRecorder.cs</Link>
         </Compile>
-        <Compile Include="..\MemoEngine\MemoEngine\Engine\FightContext.cs">
-            <Link>MemoEngine\Engine\FightContext.cs</Link>
-        </Compile>
-        <Compile Include="..\MemoEngine\MemoEngine\Engine\ListenerManager.cs">
-            <Link>MemoEngine\Engine\ListenerManager.cs</Link>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\PredicateEngine.cs">
+            <Link>MemoEngine\Engine\PredicateEngine.cs</Link>
         </Compile>
         <Compile Include="..\MemoEngine\MemoEngine\Engine\RuleEngine.cs">
             <Link>MemoEngine\Engine\RuleEngine.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\WorldModel.cs">
+            <Link>MemoEngine\Engine\WorldModel.cs</Link>
         </Compile>
         <Compile Include="..\MemoEngine\MemoEngine\Models\DutyConfig.cs">
             <Link>MemoEngine\Models\DutyConfig.cs</Link>
@@ -140,8 +147,17 @@
         <Compile Include="..\MemoEngine\MemoEngine\Models\EngineState.cs">
             <Link>MemoEngine\Models\EngineState.cs</Link>
         </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\MechanicAction.cs">
+            <Link>MemoEngine\Models\MechanicAction.cs</Link>
+        </Compile>
         <Compile Include="..\MemoEngine\MemoEngine\Models\Payload.cs">
             <Link>MemoEngine\Models\Payload.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Predicate.cs">
+            <Link>MemoEngine\Models\Predicate.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Models\Trigger.cs">
+            <Link>MemoEngine\Models\Trigger.cs</Link>
         </Compile>
         <Compile Include="..\MemoEngine\MemoEngine\Models\Events\Action.cs">
             <Link>MemoEngine\Models\Events\Action.cs</Link>
@@ -157,9 +173,6 @@
         </Compile>
         <Compile Include="..\MemoEngine\MemoEngine\Models\Events\Status.cs">
             <Link>MemoEngine\Models\Events\Status.cs</Link>
-        </Compile>
-        <Compile Include="..\MemoEngine\MemoEngine\Models\Events\Tools.cs">
-            <Link>MemoEngine\Models\Events\Tools.cs</Link>
         </Compile>
     </ItemGroup>
     <ItemGroup>
