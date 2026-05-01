@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
@@ -32,6 +33,12 @@ namespace MemoUploader.Events;
 internal class EventManager
 {
     private readonly Timer updateHpTimer;
+
+    // entityID → BNpc baseID, populated from log type 03 and consumed by log
+    // types 04 / 22 (which only carry entityID, not baseID). Engine 2.0 phase
+    // predicates key off baseID, so without this map TARGETABLE / HP_RATIO
+    // predicates never match real bosses and Context.EnemyDataId stays 0.
+    private static readonly ConcurrentDictionary<uint, uint> entityToBaseID = new();
 
     public EventManager()
     {
@@ -211,6 +218,9 @@ internal class EventManager
         if (zoneId <= 0)
             return;
 
+        // entity table resets on zone change; drop our mirror of it
+        entityToBaseID.Clear();
+
         Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId);
     }
 
@@ -227,7 +237,16 @@ internal class EventManager
         if (parts.Length < 12)
             return;
 
-        Event.Combatant.RaiseSpawned(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
+        var entityID = LogParser.TryParseHex(parts[1]);
+        var baseID   = LogParser.TryParseHex(parts[9]);
+
+        // PCs and some non-combat NPCs have baseID=0; engine predicates only key
+        // on real BNpc baseIDs so skip the noise
+        if (baseID == 0)
+            return;
+
+        entityToBaseID[entityID] = baseID;
+        Event.Combatant.RaiseSpawned(DateTimeOffset.UtcNow, baseID);
     }
 
     /// <summary>
@@ -239,7 +258,11 @@ internal class EventManager
         if (parts.Length < 3)
             return;
 
-        Event.Combatant.RaiseDestroyed(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
+        var entityID = LogParser.TryParseHex(parts[1]);
+        if (!entityToBaseID.TryRemove(entityID, out var baseID))
+            return;
+
+        Event.Combatant.RaiseDestroyed(DateTimeOffset.UtcNow, baseID);
     }
 
     /// <summary>
@@ -252,11 +275,15 @@ internal class EventManager
         if (parts.Length < 6)
             return;
 
+        var entityID = LogParser.TryParseHex(parts[1]);
+        if (!entityToBaseID.TryGetValue(entityID, out var baseID))
+            return;
+
         var targetable = parts[5] == "01";
         if (targetable)
-            Event.Combatant.RaiseBecameTargetable(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
+            Event.Combatant.RaiseBecameTargetable(DateTimeOffset.UtcNow, baseID);
         else
-            Event.Combatant.RaiseBecameUntargetable(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
+            Event.Combatant.RaiseBecameUntargetable(DateTimeOffset.UtcNow, baseID);
     }
 
     #endregion
