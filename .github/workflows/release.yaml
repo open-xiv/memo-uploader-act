@@ -92,3 +92,33 @@ jobs:
               with:
                   tag_name: v${{ steps.version.outputs.version }}
                   files: MemoUploader-v*.zip
+
+            - name: Generate manifest.json
+              shell: pwsh
+              run: |
+                  $version = "${{ steps.version.outputs.version }}"
+                  @{
+                      version     = $version
+                      downloadUrl = "https://haku.diemoe.net/memo-uploader/MemoUploader-v$version.zip"
+                      changelog   = "${{ github.event.head_commit.message }}"
+                  } | ConvertTo-Json | Set-Content -Path manifest.json
+
+            - name: Pack mirror artifact
+              shell: bash
+              run: tar -cf mirror.tar manifest.json MemoUploader-v${{ steps.version.outputs.version }}.zip
+
+            - name: Upload mirror to haku.diemoe.net
+              shell: bash
+              env:
+                  DEPLOY_API_BASE: ${{ secrets.DEPLOY_API_BASE }}
+                  DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+              run: |
+                  curl --fail-with-body \
+                    --connect-timeout 10 \
+                    --max-time 300 \
+                    --retry 3 \
+                    --retry-delay 5 \
+                    --retry-connrefused \
+                    -X POST "${DEPLOY_API_BASE}/upload-plugin" \
+                    -H "Authorization: Bearer ${DEPLOY_TOKEN}" \
+                    -F "artifact=@mirror.tar"
