@@ -431,18 +431,30 @@ internal class EventManager
         if (repo is null)
             return [];
 
-        return repo.GetCombatantList()
-                   .Where(c => c.PartyType == PartyType.Party)
-                   .ToDictionary(p => p.ID,
-                                 p => new PlayerPayload
-                                 {
-                                     Name       = p.Name,
-                                     Server     = MapHelper.ServerEnToZh(p.WorldName),
-                                     JobId      = (uint)Math.Max(0, p.Job),
-                                     Level      = (uint)Math.Max(0, p.Level),
-                                     DeathCount = 0
-                                 });
+        var combatants = repo.GetCombatantList();
+        var party = combatants.Where(c => c.PartyType == PartyType.Party)
+                              .ToDictionary(p => p.ID, ToPlayerPayload);
+
+        if (party.Count > 0)
+            return party;
+
+        var selfId = repo.GetCurrentPlayerID();
+        var self   = combatants.FirstOrDefault(c => c.ID == selfId);
+        if (self is null)
+            return [];
+
+        return new Dictionary<uint, PlayerPayload> { { self.ID, ToPlayerPayload(self) } };
     }
+
+    private static PlayerPayload ToPlayerPayload(Combatant c) =>
+        new()
+        {
+            Name       = c.Name,
+            Server     = MapHelper.ServerEnToZh(c.WorldName),
+            JobId      = (uint)Math.Max(0, c.Job),
+            Level      = (uint)Math.Max(0, c.Level),
+            DeathCount = 0
+        };
 
     #endregion
 }
