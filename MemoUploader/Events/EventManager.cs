@@ -54,6 +54,12 @@ internal class EventManager
     {
         ActGlobals.oFormActMain.BeforeLogLineRead += OnBeforeLogLineRead;
         updateHpTimer.Start();
+
+        // ACT only emits log type 01 (zone change) on transition; plugin loads
+        // mid-zone (auto-update flow, manual reload) miss the synthetic events
+        // that would normally tell the engine to fetch yaml + populate
+        // WorldModel. Bootstrap by sampling DataRepository directly.
+        BootstrapFromCurrentZone();
     }
 
     public void Uninit()
@@ -222,6 +228,55 @@ internal class EventManager
         entityToBaseID.Clear();
 
         Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId);
+
+        // catch up combatants already present at zone load (boss BattleNpcs
+        // typically spawn before the territory-change log line is emitted to
+        // ACT, so 03 events never fire for them).
+        SnapshotCombatants();
+    }
+
+    /// <summary>
+    ///     Used at plugin Init when ACT loads while the player is already in
+    ///     a zone. Synthesizes a TerritoryChanged + combatant snapshot so the
+    ///     engine ends up in the same state it would have reached via the
+    ///     normal log-01 path.
+    /// </summary>
+    private static void BootstrapFromCurrentZone()
+    {
+        var repo = ParseHelper.Parser?.DataRepository;
+        if (repo is null)
+            return;
+
+        var zoneId = (ushort)repo.GetCurrentTerritoryID();
+        if (zoneId == 0)
+            return;
+
+        Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId);
+        SnapshotCombatants();
+    }
+
+    /// <summary>
+    ///     Emit Spawned + BecameTargetable for every non-PC BattleChara
+    ///     currently visible. Engine 2.0 idempotently merges duplicates
+    ///     in WorldModel, so re-emitting on a 22 (NameToggle) transition is
+    ///     harmless.
+    /// </summary>
+    private static void SnapshotCombatants()
+    {
+        var repo = ParseHelper.Parser?.DataRepository;
+        if (repo is null)
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var c in repo.GetCombatantList())
+        {
+            if (c.BNpcID == 0)
+                continue;
+
+            entityToBaseID[c.ID] = c.BNpcID;
+            Event.Combatant.RaiseSpawned(now, c.BNpcID);
+            Event.Combatant.RaiseBecameTargetable(now, c.BNpcID);
+        }
     }
 
     #endregion
