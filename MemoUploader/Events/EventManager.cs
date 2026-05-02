@@ -6,6 +6,7 @@ using System.Timers;
 using Advanced_Combat_Tracker;
 using FFXIV_ACT_Plugin.Common.Models;
 using MemoEngine;
+using MemoEngine.Models;
 using MemoUploader.Helpers;
 using PlayerPayload = MemoEngine.Models.PlayerPayload;
 
@@ -245,12 +246,19 @@ internal class EventManager
     {
         var repo = ParseHelper.Parser?.DataRepository;
         if (repo is null)
+        {
+            LogHelper.Warning("[Bootstrap]: DataRepository unavailable, skipping");
             return;
+        }
 
         var zoneId = (ushort)repo.GetCurrentTerritoryID();
         if (zoneId == 0)
+        {
+            LogHelper.Info("[Bootstrap]: not in a zone");
             return;
+        }
 
+        LogHelper.Info($"[Bootstrap]: zone={zoneId}, replaying TerritoryChanged + snapshot");
         Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId);
         SnapshotCombatants();
     }
@@ -267,16 +275,27 @@ internal class EventManager
         if (repo is null)
             return;
 
-        var now = DateTimeOffset.UtcNow;
+        var now      = DateTimeOffset.UtcNow;
+        var total    = 0;
+        var withBNpc = 0;
+        var sample   = new List<uint>();
+
         foreach (var c in repo.GetCombatantList())
         {
+            total++;
             if (c.BNpcID == 0)
                 continue;
+
+            withBNpc++;
+            if (sample.Count < 10)
+                sample.Add(c.BNpcID);
 
             entityToBaseID[c.ID] = c.BNpcID;
             Event.Combatant.RaiseSpawned(now, c.BNpcID);
             Event.Combatant.RaiseBecameTargetable(now, c.BNpcID);
         }
+
+        LogHelper.Info($"[Snapshot]: total={total} bnpc={withBNpc} sample=[{string.Join(",", sample)}]");
     }
 
     #endregion
@@ -392,13 +411,34 @@ internal class EventManager
         Event.General.RaisePlayerDied(DateTimeOffset.UtcNow, LogParser.TryParseHex(parts[1]));
     }
 
+    private static uint        lastTrackedEnemyDataId;
+    private static EngineState lastLoggedEngineState = (EngineState)(-1);
+
     private static void UpdateHp()
     {
-        if (Context.EnemyDataId == 0)
+        var state = Context.Lifecycle;
+        if (state != lastLoggedEngineState)
+        {
+            LogHelper.Info($"[EngineState]: {lastLoggedEngineState} -> {state}");
+            lastLoggedEngineState = state;
+        }
+
+        var current = Context.EnemyDataId;
+
+        if (current != lastTrackedEnemyDataId)
+        {
+            if (current == 0)
+                LogHelper.Info($"[Hp]: tracking cleared (was data_id={lastTrackedEnemyDataId})");
+            else
+                LogHelper.Info($"[Hp]: tracking enemy data_id={current}");
+            lastTrackedEnemyDataId = current;
+        }
+
+        if (current == 0)
             return;
 
         var repo  = ParseHelper.Parser?.DataRepository;
-        var enemy = repo?.GetCombatantList().FirstOrDefault(c => c.BNpcID == Context.EnemyDataId);
+        var enemy = repo?.GetCombatantList().FirstOrDefault(c => c.BNpcID == current);
         if (enemy is null)
             return;
 
@@ -461,11 +501,13 @@ internal class EventManager
             // 副本胜利
             case "40000003":
             case "40000002": // 多变迷宫
+                LogHelper.Info($"[Director]: duty completed (cmd={command})");
                 Event.General.RaiseDutyCompleted(DateTimeOffset.UtcNow);
                 break;
 
             // 团灭 - 使用最早的团灭黑屏信号
             case "40000005":
+                LogHelper.Info($"[Director]: duty wiped (cmd={command})");
                 Event.General.RaiseDutyWiped(DateTimeOffset.UtcNow);
                 break;
         }
