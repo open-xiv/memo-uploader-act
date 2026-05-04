@@ -131,17 +131,20 @@
         <Compile Include="..\MemoEngine\MemoEngine\Api\ApiClient.cs">
             <Link>MemoEngine\Api\ApiClient.cs</Link>
         </Compile>
-        <Compile Include="..\MemoEngine\MemoEngine\Engine\EventRecorder.cs">
-            <Link>MemoEngine\Engine\EventRecorder.cs</Link>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\History.cs">
+            <Link>MemoEngine\Engine\History.cs</Link>
         </Compile>
-        <Compile Include="..\MemoEngine\MemoEngine\Engine\PredicateEngine.cs">
-            <Link>MemoEngine\Engine\PredicateEngine.cs</Link>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\Pipeline.cs">
+            <Link>MemoEngine\Engine\Pipeline.cs</Link>
         </Compile>
-        <Compile Include="..\MemoEngine\MemoEngine\Engine\RuleEngine.cs">
-            <Link>MemoEngine\Engine\RuleEngine.cs</Link>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\Recorder.cs">
+            <Link>MemoEngine\Engine\Recorder.cs</Link>
         </Compile>
-        <Compile Include="..\MemoEngine\MemoEngine\Engine\WorldModel.cs">
-            <Link>MemoEngine\Engine\WorldModel.cs</Link>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\Tracker.cs">
+            <Link>MemoEngine\Engine\Tracker.cs</Link>
+        </Compile>
+        <Compile Include="..\MemoEngine\MemoEngine\Engine\World.cs">
+            <Link>MemoEngine\Engine\World.cs</Link>
         </Compile>
         <Compile Include="..\MemoEngine\MemoEngine\Models\DutyConfig.cs">
             <Link>MemoEngine\Models\DutyConfig.cs</Link>
