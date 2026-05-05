@@ -64,21 +64,21 @@ internal static class ApiClient
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
         try
         {
-            LogHelper.Info($"Fight record body: {json}");
+            LogHelper.Info($"[Upload] body: {json}");
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             var resp    = await Client.PostAsync(url, content, cts.Token);
             if (resp.StatusCode is HttpStatusCode.Created or HttpStatusCode.OK)
             {
-                LogHelper.Info($"Fight record uploaded successfully to {apiUrl}");
+                LogHelper.Info($"[Upload] success: url={apiUrl}");
                 return true;
             }
             var err = await resp.Content.ReadAsStringAsync();
-            LogHelper.Warning($"Fight record upload to {apiUrl} failed: [{resp.StatusCode}] {err}");
+            LogHelper.Warning($"[Upload] failure: url={apiUrl} status={(int)resp.StatusCode} reason={err}");
             return false;
         }
         catch (Exception e)
         {
-            LogHelper.Warning($"Fight record upload to {apiUrl} exception: {e.Message}");
+            LogHelper.Warning($"[Upload] failure: url={apiUrl} reason=exception message={e.Message}");
             return false;
         }
     }

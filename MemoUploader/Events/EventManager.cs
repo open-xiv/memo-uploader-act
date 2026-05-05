@@ -8,6 +8,7 @@ using FFXIV_ACT_Plugin.Common.Models;
 using MemoEngine;
 using MemoEngine.Models;
 using MemoUploader.Helpers;
+using MemoUploader.Tags;
 using PlayerPayload = MemoEngine.Models.PlayerPayload;
 
 
@@ -228,7 +229,12 @@ internal class EventManager
         // entity table resets on zone change; drop our mirror of it
         entityToBaseID.Clear();
 
-        Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId);
+        // roulette tag, if any — RouletteTracker has been listening to
+        // CFNotify packets in the background and will return the cached
+        // value (or null when not in roulette / cache stale).
+        var tags = RouletteTracker.BuildTags();
+        LogHelper.Info($"[Zone] change: id={zoneId} tags=[{(tags is null ? "" : string.Join(",", tags))}]");
+        Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId, tags);
 
         // catch up combatants already present at zone load (boss BattleNpcs
         // typically spawn before the territory-change log line is emitted to
@@ -247,19 +253,22 @@ internal class EventManager
         var repo = ParseHelper.Parser?.DataRepository;
         if (repo is null)
         {
-            LogHelper.Warning("[Bootstrap]: DataRepository unavailable, skipping");
+            LogHelper.Warning("[Bootstrap] skipped: reason=parser-null");
             return;
         }
 
         var zoneId = (ushort)repo.GetCurrentTerritoryID();
         if (zoneId == 0)
         {
-            LogHelper.Info("[Bootstrap]: not in a zone");
+            LogHelper.Info("[Bootstrap] skipped: reason=no-zone");
             return;
         }
 
-        LogHelper.Info($"[Bootstrap]: zone={zoneId}, replaying TerritoryChanged + snapshot");
-        Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId);
+        // BuildTags will return null here unless ACT happened to be
+        // running and the plugin was reloaded mid-queue — extremely rare.
+        var tags = RouletteTracker.BuildTags();
+        LogHelper.Info($"[Bootstrap] replay: id={zoneId} tags=[{(tags is null ? "" : string.Join(",", tags))}]");
+        Event.General.RaiseTerritoryChanged(DateTimeOffset.UtcNow, zoneId, tags);
         SnapshotCombatants();
     }
 
@@ -295,7 +304,7 @@ internal class EventManager
             Event.Combatant.RaiseBecameTargetable(now, c.BNpcID);
         }
 
-        LogHelper.Info($"[Snapshot]: total={total} bnpc={withBNpc} sample=[{string.Join(",", sample)}]");
+        LogHelper.Info($"[Snapshot] combatants: total={total} bnpc={withBNpc} sample=[{string.Join(",", sample)}]");
     }
 
     #endregion
@@ -419,7 +428,7 @@ internal class EventManager
         var state = Context.Lifecycle;
         if (state != lastLoggedEngineState)
         {
-            LogHelper.Info($"[EngineState]: {lastLoggedEngineState} -> {state}");
+            LogHelper.Debug($"[Engine] state: from={lastLoggedEngineState} to={state}");
             lastLoggedEngineState = state;
         }
 
@@ -428,9 +437,9 @@ internal class EventManager
         if (current != lastTrackedEnemyDataId)
         {
             if (current == 0)
-                LogHelper.Info($"[Hp]: tracking cleared (was data_id={lastTrackedEnemyDataId})");
+                LogHelper.Debug($"[Hp] track: cleared prev={lastTrackedEnemyDataId}");
             else
-                LogHelper.Info($"[Hp]: tracking enemy data_id={current}");
+                LogHelper.Debug($"[Hp] track: id={current}");
             lastTrackedEnemyDataId = current;
         }
 
@@ -501,13 +510,13 @@ internal class EventManager
             // 副本胜利
             case "40000003":
             case "40000002": // 多变迷宫
-                LogHelper.Info($"[Director]: duty completed (cmd={command})");
+                LogHelper.Info($"[Duty] completed: cmd={command}");
                 Event.General.RaiseDutyCompleted(DateTimeOffset.UtcNow);
                 break;
 
             // 团灭 - 使用最早的团灭黑屏信号
             case "40000005":
-                LogHelper.Info($"[Director]: duty wiped (cmd={command})");
+                LogHelper.Info($"[Duty] wiped: cmd={command}");
                 Event.General.RaiseDutyWiped(DateTimeOffset.UtcNow);
                 break;
         }
@@ -539,12 +548,13 @@ internal class EventManager
             case "1":
                 var partySnapshots = GetPartySnapshots();
                 Event.General.RaiseCombatOptIn(DateTimeOffset.UtcNow, partySnapshots);
-                LogHelper.Info("[Lifecycle]: Enter Combat");
+                LogHelper.Info($"[Combat] start: members={partySnapshots.Count}");
                 foreach (var kv in partySnapshots)
-                    LogHelper.Info($"[Party List]: {kv.Value.Name}@{kv.Value.Server} (id: {kv.Key}) <job: {kv.Value.JobId}>");
+                    LogHelper.Info($"[Party] member: name={kv.Value.Name} server={kv.Value.Server} id={kv.Key} job={kv.Value.JobId}");
                 break;
             case "0":
                 Event.General.RaiseCombatOptOut(DateTimeOffset.UtcNow);
+                LogHelper.Info("[Combat] end");
                 break;
         }
     }

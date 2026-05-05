@@ -10,6 +10,7 @@ using MemoEngine.Models;
 using MemoUploader.Api;
 using MemoUploader.Events;
 using MemoUploader.Helpers;
+using MemoUploader.Tags;
 
 
 namespace MemoUploader;
@@ -54,6 +55,12 @@ public class PluginMain : IActPluginV1
         // parser
         ParseHelper.Init();
 
+        // roulette network watcher — must run after ParseHelper.Init so
+        // FFXIV_ACT_Plugin.DataSubscription is reachable. If the parser
+        // wasn't ready yet (ACT plugin load order), Init() returns false
+        // and EventManager will skip tags until the next plugin reload.
+        RouletteTracker.Init();
+
         lblStatus.Text = "初始化完成";
 
         // check for updates
@@ -78,6 +85,9 @@ public class PluginMain : IActPluginV1
     {
         // unlink engine and services
         Context.OnFightFinalized -= OnFightFinalized;
+
+        // network watcher
+        RouletteTracker.Uninit();
 
         // service
         eventService?.Uninit();

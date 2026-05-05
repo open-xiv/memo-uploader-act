@@ -119,6 +119,7 @@
         <Compile Include="Helpers\ParseHelper.cs"/>
         <Compile Include="Helpers\UpdateHelper.cs"/>
         <Compile Include="Helpers\AssemblyResolver.cs"/>
+        <Compile Include="Tags\RouletteTracker.cs"/>
         <Compile Include="PluginMain.cs"/>
         <Compile Include="Properties\AssemblyInfo.cs"/>
         <!-- MemoEngine Source Files -->
