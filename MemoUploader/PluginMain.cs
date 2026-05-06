@@ -19,10 +19,8 @@ public class PluginMain : IActPluginV1
 {
     private Label? lblStatus;
 
-    // service
     private EventManager? eventService;
 
-    // update cts
     private CancellationTokenSource? updateCts;
 
     public void InitPlugin(TabPage pluginScreenSpace, Label pluginStatusText)
@@ -31,39 +29,30 @@ public class PluginMain : IActPluginV1
         pluginScreenSpace.Text = "酥卷 SuMemo";
         ((TabControl)pluginScreenSpace.Parent).TabPages.Remove(pluginScreenSpace);
 
-        // path
         var pluginDir  = ActGlobals.oFormActMain.PluginGetSelfData(this).pluginFile.DirectoryName;
         var pluginPath = ActGlobals.oFormActMain.PluginGetSelfData(this).pluginFile.Name;
 
-        // assembly resolver
         _ = new AssemblyResolver(new List<string>
         {
             pluginDir
         });
 
-        // service
         eventService = new EventManager();
         eventService.Init();
 
-        // link engine
         Context.OnFightFinalized += OnFightFinalized;
 
-        // log file
         if (pluginDir is not null)
             LogHelper.LogPath = Path.Combine(pluginDir, "runtime.log");
 
-        // parser
         ParseHelper.Init();
 
-        // roulette network watcher — must run after ParseHelper.Init so
-        // FFXIV_ACT_Plugin.DataSubscription is reachable. If the parser
-        // wasn't ready yet (ACT plugin load order), Init() returns false
-        // and EventManager will skip tags until the next plugin reload.
+        // RouletteTracker subscribes to FFXIV_ACT_Plugin.DataSubscription,
+        // which is only reachable after ParseHelper resolves the parser.
         RouletteTracker.Init();
 
         lblStatus.Text = "初始化完成";
 
-        // check for updates
         updateCts = new CancellationTokenSource();
         var updateHelper = new UpdateHelper(pluginPath, pluginDir);
         _ = Task.Run(async () =>
@@ -74,29 +63,21 @@ public class PluginMain : IActPluginV1
                 if (updateHelper.HasUpdate)
                     await updateHelper.PerformUpdateAsync(updateCts.Token);
             }
-            catch (OperationCanceledException)
-            {
-                // ignore
-            }
+            catch (OperationCanceledException) { }
         });
     }
 
     public void DeInitPlugin()
     {
-        // unlink engine and services
         Context.OnFightFinalized -= OnFightFinalized;
 
-        // network watcher
         RouletteTracker.Uninit();
 
-        // service
         eventService?.Uninit();
 
-        // cancel update
         updateCts?.Cancel();
         updateCts?.Dispose();
 
-        // ReSharper disable once UseNullPropagation
         if (lblStatus != null)
             lblStatus.Text = "插件已卸载";
     }

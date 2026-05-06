@@ -10,43 +10,30 @@ namespace MemoUploader.Tags;
 /// <summary>
 ///     ACT-side equivalent of the Dalamud uploader's RouletteTags. ACT has
 ///     no game-memory access, so we tap FFXIV_ACT_Plugin's
-///     DataSubscription.NetworkReceived stream and watch for the
-///     ContentFinderNotifyPop server packet that fires the moment a duty
-///     queue pops.
+///     DataSubscription.NetworkReceived and watch for ContentFinderNotifyPop.
 ///
-///     Packet layout (matches matcha/Cafe.Matcha — Network/Packet.cs and
-///     Network/NetworkMonitor.cs:407+):
-///       offset  0..31  : 32-byte header (opcode at 18..19 LE u16)
-///       body    +0     : 4 bytes — unused / padding
-///       body    +2     : u16  QueuedContentRouletteId
-///       body    +0x1c  : u16  PoppedContent instance id (when roulette=0)
-///       total length   : 72 bytes
+///     Packet layout (matcha Network/Packet.cs + NetworkMonitor.cs:407+):
+///       0..31    : 32-byte header (opcode at +18..19 LE u16)
+///       body +2  : u16 QueuedContentRouletteId
+///       body +1c : u16 PoppedContent instance id (when roulette=0)
+///       total    : 72 bytes
 ///
-///     Cached id is consumed by EventManager at TerritoryChanged time and
-///     forwarded as the engine's opaque-string tag. Cleared naturally by
-///     subsequent CFNotify packets (queue-for-direct overwrites or
-///     declines re-queue).
+///     Cached id is consumed at the next TerritoryChanged and cleared on
+///     consume — fire-and-forget. Subsequent CFNotify packets overwrite.
 /// </summary>
 internal static class RouletteTracker
 {
-    // Game opcode for ContentFinderNotifyPop. Patched per game version —
-    // matcha's Constant/MatchaOpcode.cs lists the historical values via
-    // the karashiiro/FFXIVOpcodes feed. Current CN patch 7.5 = 0x025F
-    // (verified by accepting Leveling Roulette in town and matching the
-    // 72-byte packet whose body[+2] equals the roulette id).
+    // ContentFinderNotifyPop opcode. Patched per game version — current
+    // CN patch 7.5 = 0x025F. Source: karashiiro/FFXIVOpcodes feed, mirrored
+    // in matcha/Cafe.Matcha/Constant/MatchaOpcode.cs.
     //
-    // If a future patch shifts this and tags stop emitting:
-    //   1. flip DiagnoseUnknownShapes to true and rebuild
-    //   2. accept any roulette in town
-    //   3. find the new "[Roulette] shape len=72" line whose body[+2] != 0
-    //   4. update this constant to that opcode
+    // If a patch shifts this and tags stop emitting: flip
+    // DiagnoseUnknownShapes to true, accept any roulette in town, find the
+    // new "[Roulette] shape len=72" line whose body[+2] != 0.
     private const ushort CFNotifyOpcode      = 0x025F;
-    private const int    CFNotifyTotalLength = 72; // 32 header + 40 body
+    private const int    CFNotifyTotalLength = 72;
     private const int    HeaderLength        = 32;
 
-    // Diagnostic switch: when on, log the first occurrence of every
-    // (opcode, length) tuple. Off by default — only flip on when the
-    // hardcoded CFNotify opcode misses after a game patch.
     private const bool DiagnoseUnknownShapes = false;
     private const int  ShapeLogMaxLen        = 256;
     private const int  ShapeLogCap           = 4096;
@@ -66,10 +53,7 @@ internal static class RouletteTracker
 
     private static readonly ConcurrentDictionary<uint, byte> seenShapes = new();
 
-    /// <summary>
-    ///     Hook DataSubscription.NetworkReceived. Safe to call when the
-    ///     parser isn't ready yet — logs and bails; caller can retry.
-    /// </summary>
+    /// <summary>Hook DataSubscription.NetworkReceived. Safe to retry if parser not ready.</summary>
     public static bool Init()
     {
         if (hooked)
@@ -195,24 +179,17 @@ internal static class RouletteTracker
         }
         catch (Exception ex)
         {
-            // Never let a packet handler throw back into ACT — would
-            // unsubscribe us silently and break every other plugin too.
+            // Swallow: an uncaught throw would silently unhook us from ACT.
             LogHelper.Error("[Roulette] cfnotify: failed reason=handler-threw", ex);
         }
     }
 
     /// <summary>
-    ///     Consume the cached roulette. Returns the tag list once and
-    ///     immediately clears the cache — fire-and-forget delivery to the
-    ///     next TerritoryChanged.
-    ///
-    ///     Trade-off: multi-zone duties (Crystal Tower via Alliance
-    ///     Roulette) only get the tag on the FIRST sub-zone TerritoryChanged.
-    ///     Subsequent intra-duty zone changes feed the engine's Recorder
-    ///     an empty tag list, and DutyCompleted finalizes from the last
-    ///     seen TerritoryChanged — so the uploaded payload ends up tagless.
-    ///     All single-zone roulettes (10 of the 11 lite-mode roulette
-    ///     types) tag correctly.
+    ///     Consume the cached roulette and clear it (fire-and-forget).
+    ///     Multi-zone duties only get the tag on the FIRST sub-zone
+    ///     TerritoryChanged; subsequent intra-duty zone changes wipe the
+    ///     engine's observedTags. Affects only Alliance Roulette →
+    ///     Crystal Tower; the other 10 roulette types are single-zone.
     /// </summary>
     public static IReadOnlyList<string>? BuildTags()
     {
@@ -253,11 +230,7 @@ internal static class RouletteTracker
         return new List<string> { tag };
     }
 
-    /// <summary>
-    ///     ContentRoulette excel id → server tag-whitelist value. Mirrors
-    ///     memo-uploader/MemoUploader/Tags/RouletteTags.cs:RouletteName
-    ///     and memo-server/service/fight_validate.go:clientTagRegistry.
-    /// </summary>
+    // Mirrors memo-server/service/fight_validate.go:clientTagRegistry.
     private static string? MapName(byte id) => id switch
     {
         1  => "leveling",
