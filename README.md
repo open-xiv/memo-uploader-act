@@ -1,11 +1,25 @@
-# ACT+FFXIV解析插件快速开发环境(适用于国服)
+## SuMemo Plugin · ACT 插件
 
-### 快速开发指南：
+**实时记录** 高难副本攻略进度的 ACT 端插件
 
-1. 从 github clone本仓库后请执行以下命令初始化submodule：
+> 呆萌 ACT 已内置
+
+---
+
+### 安装源
+
+在 ACT → 插件 → 安装/更新 中添加：
+
+```
+https://haku.diemoe.net/memo-uploader/manifest.json
+```
+
+---
+
+### 开发
+
+拉取后请初始化 ACT SDK submodule：
 
 ```bash
 git submodule update --init --recursive
 ```
-
-2. 可以开始开发了。

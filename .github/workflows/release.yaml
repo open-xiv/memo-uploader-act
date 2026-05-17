@@ -95,37 +95,30 @@ jobs:
                   tag_name: v${{ steps.version.outputs.version }}
                   files: MemoUploader-v*.zip
 
-            - name: Generate manifest.json
-              shell: pwsh
-              env:
-                  PLUGIN_VERSION: ${{ steps.version.outputs.version }}
-                  COMMIT_MSG: ${{ github.event.head_commit.message }}
-              run: |
-                  @{
-                      version     = $env:PLUGIN_VERSION
-                      downloadUrl = "https://haku.diemoe.net/memo-uploader/MemoUploader-v$($env:PLUGIN_VERSION).zip"
-                      changelog   = $env:COMMIT_MSG
-                  } | ConvertTo-Json | Set-Content -Path manifest.json
+    dispatch-mirror:
+        needs: build
+        if: needs.build.result == 'success'
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/create-github-app-token@v2
+                id: ops-token
+                with:
+                    app-id: ${{ secrets.GH_APP_ID }}
+                    private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+                    owner: ${{ github.repository_owner }}
+                    repositories: 'memo-ops'
 
-            - name: Pack mirror artifact
-              shell: bash
-              run: tar -cf mirror.tar manifest.json MemoUploader-v${{ steps.version.outputs.version }}.zip
-
-            - name: Upload mirror to haku.diemoe.net
-              shell: bash
-              env:
-                  DEPLOY_API_BASE: ${{ secrets.DEPLOY_API_BASE }}
-                  DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
-              run: |
-                  curl --fail-with-body \
-                    --connect-timeout 10 \
-                    --max-time 300 \
-                    --retry 3 \
-                    --retry-delay 5 \
-                    --retry-connrefused \
-                    -X POST "${DEPLOY_API_BASE}/upload-plugin" \
-                    -H "Authorization: Bearer ${DEPLOY_TOKEN}" \
-                    -F "artifact=@mirror.tar"
+            -   uses: peter-evans/repository-dispatch@v3
+                with:
+                    token: ${{ steps.ops-token.outputs.token }}
+                    repository: open-xiv/memo-ops
+                    event-type: mirror-memo-uploader-act
+                    client-payload: |
+                        {
+                          "version": "${{ needs.build.outputs.version }}",
+                          "commit_msg": ${{ toJSON(github.event.head_commit.message) }},
+                          "download_url": "https://github.com/open-xiv/memo-uploader-act/releases/download/v${{ needs.build.outputs.version }}/MemoUploader-v${{ needs.build.outputs.version }}.zip"
+                        }
 
     notify:
         needs: [build]
@@ -146,6 +139,7 @@ jobs:
                   service: memo-uploader-act
                   kind: release
                   version: v${{ needs.build.outputs.version }}
-                  cluster: act
+                  cluster: ''
                   build: ${{ needs.build.result }}
-                  webhook_token: ${{ secrets.GHA_WEBHOOK_TOKEN }}
+                  webhook_url: ${{ secrets.BOT_WEBHOOK_URL }}
+                  webhook_token: ${{ secrets.BOT_WEBHOOK_TOKEN }}
